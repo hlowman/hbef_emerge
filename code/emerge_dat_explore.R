@@ -71,28 +71,122 @@ dat_long <- dat_long %>%
 # Summarize by order
 dat_order <- dat_long %>%
   group_by(watershed, Date, Order) %>%
-  summarize(total_count = sum(count, rm.na = TRUE)) %>%
+  # note, this will sum across all traps collected ina given week
+  summarize(total_count = sum(count, na.rm = TRUE)) %>%
   ungroup()
 
 (fig1 <- ggplot(dat_order, aes(x = Date, 
                               y = total_count,
                               color = Order)) +
-   geom_point() +
-   labs(y = "Count (Large + Small)") +
+   geom_line() +
+   labs(y = "Count (Large + Small)",
+        caption = "HBEF Emergence Data - accessed 3.14.24") +
    scale_color_manual(values = cal_palette("figmtn")) +
-   facet_grid(Order ~ watershed, scales = "free") +
+   facet_grid(Order ~ watershed, scales = "free_y") +
    theme_bw())
 
 # Export figure.
 # ggsave(plot = fig1,
-#        filename = "figures/emerge_031424.jpg",
+#        filename = "figures/emerge_031824.jpg",
 #        width = 50,
 #        height = 20,
 #        units = "cm")
 
-# Hmmm, something's not looking quite right -
-# need to check to be sure this collapsing isn't doing
-# anything strange.
+# Ok, let's also zoom in on watershed 6 since that's the longest
+# record of all the datasets.
+dat_w6 <- dat_long %>%
+  filter(watershed == 6) %>%
+  group_by(Date, Order, Size) %>%
+  # note, this will sum across all traps collected ina given week
+  summarize(total_count = sum(count, na.rm = TRUE)) %>%
+  ungroup()
+
+(fig2 <- ggplot(dat_w6, aes(x = Date, 
+                            y = total_count,
+                            color = Order,
+                            alpha = Size)) +
+    geom_point() +
+    scale_alpha_discrete(range=c(1, 0.5)) +
+    labs(y = "Count",
+         caption = "Watershed 6 Emergence Data") +
+    scale_color_manual(values = cal_palette("figmtn")) +
+    facet_grid(Order ~ Size, scales = "free_y") +
+    theme_bw())
+
+# Export figure.
+# ggsave(plot = fig2,
+#        filename = "figures/emerge_w6_031824.jpg",
+#        width = 15,
+#        height = 20,
+#        units = "cm")
+
+# Investigate when peak emergence occurred for aquatic species.
+dat_peak <- dat_long %>%
+  filter(Order %in% c("dipteran", "caddisfly", "mayfly", "stonefly")) %>%
+  group_by(watershed, Date, Order) %>%
+  # note, this will sum across all traps
+  summarize(total_count = sum(count, na.rm = TRUE)) %>%
+  ungroup() %>%
+  # and select for the peak emergence each year
+  mutate(year = year(Date)) %>%
+  group_by(watershed, year, Order) %>%
+  slice(which.max(total_count)) %>%
+  # add column for plotting
+  mutate(jday = yday(Date))
+
+(fig3 <- ggplot(dat_peak, aes(x = year, 
+                            y = jday,
+                            color = Order)) +
+    geom_point(size = 3) +
+    labs(y = "DOY",
+         x = "Year",
+         caption = "Peak Emergence Data by Watershed") +
+    scale_color_manual(values = cal_palette("figmtn")) +
+    facet_grid(Order ~ watershed) +
+    theme_bw())
+
+# Export figure.
+# ggsave(plot = fig3,
+#        filename = "figures/peak_emerge_031824.jpg",
+#        width = 50,
+#        height = 20,
+#        units = "cm")
+
+# And examine accumulation curves for these same aquatic species.
+dat_aq <- dat_long %>%
+  filter(Order %in% c("dipteran", "caddisfly", "mayfly", "stonefly")) %>%
+  group_by(watershed, Date) %>%
+  # note, this will sum across all traps, orders, and sizes
+  summarize(total_count = sum(count, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(year = year(Date),
+         jday = yday(Date)) %>%
+  group_by(watershed, year) %>%
+  mutate(running_total = cumsum(total_count)) %>%
+  ungroup()
+  
+(fig4 <- ggplot(dat_aq %>%
+                  drop_na(year), 
+                aes(x = jday, 
+                y = running_total,
+                color = watershed)) +
+    geom_line(size = 1) +
+    #xlim(100, 250) +
+    labs(y = "Cumulative Sum of Emerged Insects",
+         x = "DOY",
+         caption = "Cumulative Emergence by Year") +
+    scale_color_manual(values = cal_palette("kelp1",
+                                            n = 8,
+                                            type = "continuous")) +
+    facet_grid(year ~ .,) +
+    theme_bw())
+
+# Export figure.
+# ggsave(plot = fig4,
+#        filename = "figures/cumulative_emerge_031824.jpg",
+#        width = 15,
+#        height = 30,
+#        units = "cm")
   
 # End of script.
   
