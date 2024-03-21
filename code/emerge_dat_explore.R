@@ -5,7 +5,7 @@
 #### README ####
 
 # The following script will perform some initial data exploration
-# and visualization of the HBEF aquatic insect emergency data.
+# and visualization of the HBEF aquatic insect emergence data.
 
 # Data was downloaded from https://hbwater.org/restricted_QAQC/
 # on March 14, 2024.
