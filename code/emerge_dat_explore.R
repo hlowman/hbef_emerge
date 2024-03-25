@@ -71,7 +71,7 @@ dat_long <- dat_long %>%
 # Summarize by order
 dat_order <- dat_long %>%
   group_by(watershed, Date, Order) %>%
-  # note, this will sum across all traps collected ina given week
+  # note, this will sum across all traps collected in a given week
   summarize(total_count = sum(count, na.rm = TRUE)) %>%
   ungroup()
 
@@ -162,7 +162,7 @@ dat_aq <- dat_long %>%
   mutate(year = year(Date),
          jday = yday(Date)) %>%
   group_by(watershed, year) %>%
-  mutate(running_total = cumsum(total_count)) %>%
+  mutate(running_total = cumsum(replace_na(total_count, 0))) %>%
   ungroup()
   
 (fig4 <- ggplot(dat_aq %>%
@@ -186,6 +186,82 @@ dat_aq <- dat_long %>%
 #        filename = "figures/cumulative_emerge_031824.jpg",
 #        width = 15,
 #        height = 30,
+#        units = "cm")
+
+# Examine overall peak emergence as well as percentiles of overall emergence.
+# First, going to pull out maximum count data to add to this dataset.
+dat_max <- dat_aq %>%
+  group_by(watershed, year) %>%
+  slice(which.max(running_total)) %>%
+  ungroup() %>%
+  # and drop extra years
+  drop_na(Date) %>%
+  rename(sum_total = running_total) %>%
+  select(watershed, year, sum_total)
+
+dat_peak_all <- dat_aq %>%
+  # select for the peak emergence each year
+  group_by(watershed, year) %>%
+  slice(which.max(total_count)) %>%
+  ungroup() %>%
+  drop_na(Date)
+
+(fig5 <- ggplot(dat_peak_all, aes(x = year, 
+                              y = jday,
+                              color = watershed)) +
+    geom_point(size = 3) +
+    labs(y = "DOY",
+         x = "Year",
+         caption = "Peak Emergence Data by Watershed") +
+    scale_color_manual(values = cal_palette("kelp2", n = 8, type = "continuous")) +
+    facet_grid(. ~ watershed) +
+    theme_bw() +
+    theme(legend.position = "none"))
+
+# Export figure.
+# ggsave(plot = fig5,
+#        filename = "figures/peak_emerge_all_032524.jpg",
+#        width = 50,
+#        height = 10,
+#        units = "cm")
+
+# Add maximum tally to dat_aq to be able to calculate percentile thresholds.
+dat_aq <- left_join(dat_aq, dat_max) %>%
+  mutate(percentile = running_total/sum_total)
+
+# Create table of dates when percentiles are reached.
+dat_perc <- dat_aq %>%
+  # creates a new column that assigns each observation to a group
+  mutate(perc_group = factor(case_when(percentile <= 0.25 ~ "<0.25",
+                                percentile > 0.25 & percentile <= 0.5 ~ "0.25",
+                                percentile > 0.5 & percentile <= 0.75 ~ "0.5",
+                                percentile > 0.75 ~ "0.75"),
+         levels = c("<0.25", "0.25", "0.5", "0.75"))) %>%
+  # and now I want to pull out the first instance in each group
+  group_by(watershed, year, perc_group) %>%
+  slice(which.min(jday)) %>%
+  ungroup()
+
+(fig6 <- ggplot(dat_perc %>%
+                  # filtering out <.25 because that's a sampling artefact
+                  filter(perc_group %in% c("0.25", "0.5", "0.75")), 
+                aes(x = perc_group, 
+                    y = jday,
+                    color = watershed)) +
+    geom_jitter(size = 3, alpha = 0.8, width = 0.1) +
+    geom_hline(yintercept = 183) +
+    labs(y = "DOY",
+         x = "Percentile",
+         caption = "Cumulative Count Percentiles of Aquatic Taxa Emergence Data") +
+    scale_color_manual(values = cal_palette("kelp2", n = 8, type = "continuous")) +
+    facet_grid(. ~ year) +
+    theme_bw())
+
+# Export figure.
+# ggsave(plot = fig6,
+#        filename = "figures/perc_emerge_all_032524.jpg",
+#        width = 35,
+#        height = 8,
 #        units = "cm")
   
 # End of script.
