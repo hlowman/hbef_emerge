@@ -79,11 +79,17 @@ dat_order <- dat_long %>%
                               y = total_count,
                               color = Order)) +
    geom_line() +
+   scale_x_continuous(
+      breaks = seq.Date(as.Date("2018-01-01"), 
+                        as.Date("2023-12-31"), 
+                        by = "2 year"),
+      labels = ~ format(.x, "%Y")) +
    labs(y = "Count (Large + Small)",
         caption = "HBEF Emergence Data - accessed 3.14.24") +
    scale_color_manual(values = cal_palette("figmtn")) +
    facet_grid(Order ~ watershed, scales = "free_y") +
-   theme_bw())
+   theme_bw() +
+   theme(text = element_text(size = 20)))
 
 # Export figure.
 # ggsave(plot = fig1,
