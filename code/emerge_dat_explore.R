@@ -126,8 +126,8 @@ dat_w6 <- dat_long %>%
 #        height = 20,
 #        units = "cm")
 
-# Investigate when peak emergence occurred for aquatic species.
-dat_peak <- dat_long %>%
+# Investigate when peak emergence occurred for aquatic species only.
+dat_peak_order <- dat_long %>%
   filter(Order %in% c("dipteran", "caddisfly", "mayfly", "stonefly")) %>%
   group_by(watershed, Date, Order) %>%
   # note, this will sum across all traps
@@ -140,16 +140,19 @@ dat_peak <- dat_long %>%
   # add column for plotting
   mutate(jday = yday(Date))
 
-(fig3 <- ggplot(dat_peak, aes(x = year, 
+(fig3 <- ggplot(dat_peak_order, aes(x = year, 
                             y = jday,
                             color = Order)) +
-    geom_point(size = 3) +
+    geom_point(size = 6) +
+    scale_x_continuous(breaks = c(2020, 2022)) +
     labs(y = "DOY",
          x = "Year",
          caption = "Peak Emergence Data by Watershed") +
     scale_color_manual(values = cal_palette("figmtn")) +
     facet_grid(Order ~ watershed) +
-    theme_bw())
+    theme_bw() +
+    theme(text = element_text(size = 20),
+          legend.position = "none"))
 
 # Export figure.
 # ggsave(plot = fig3,
@@ -210,30 +213,37 @@ dat_peak_all <- dat_aq %>%
   group_by(watershed, year) %>%
   slice(which.max(total_count)) %>%
   ungroup() %>%
-  drop_na(Date)
+  # There's some NA data for W4 I need to resolve here with Adam...
+  drop_na(Date) %>%
+  # And I'm going to add a column with which to distinguish W6.
+  mutate(code = case_when(watershed == 6 ~ "YES",
+                          TRUE ~ "NO"))
 
 (fig5 <- ggplot(dat_peak_all, aes(x = year, 
                               y = jday,
-                              color = watershed)) +
-    geom_point(size = 3) +
+                              color = watershed,
+                              alpha = code)) +
+    geom_jitter(size = 3, width = 0.1) +
+    scale_alpha_manual(values = c(0.4, 1), guide = "none") +
     labs(y = "DOY",
          x = "Year",
          caption = "Peak Emergence Data by Watershed") +
     scale_color_manual(values = cal_palette("kelp2", n = 8, type = "continuous")) +
-    facet_grid(. ~ watershed) +
-    theme_bw() +
-    theme(legend.position = "none"))
+    theme_bw())
 
 # Export figure.
 # ggsave(plot = fig5,
-#        filename = "figures/peak_emerge_all_032524.jpg",
-#        width = 50,
+#        filename = "figures/peak_emerge_all_032724.jpg",
+#        width = 15,
 #        height = 10,
 #        units = "cm")
 
 # Add maximum tally to dat_aq to be able to calculate percentile thresholds.
 dat_aq <- left_join(dat_aq, dat_max) %>%
-  mutate(percentile = running_total/sum_total)
+  mutate(percentile = running_total/sum_total) %>%
+  # And I'm going to add a column with which to distinguish W6.
+  mutate(code = case_when(watershed == 6 ~ "YES",
+                          TRUE ~ "NO"))
 
 # Create table of dates when percentiles are reached.
 dat_perc <- dat_aq %>%
@@ -248,13 +258,37 @@ dat_perc <- dat_aq %>%
   slice(which.min(jday)) %>%
   ungroup()
 
+(fig6.0 <- ggplot(dat_perc %>%
+                  # filtering out <.25 because that's a sampling artefact
+                  filter(perc_group %in% c("0.25", "0.5", "0.75")) %>%
+                  # and making a version with only W6 for the slides
+                  filter(watershed == 6), 
+                aes(x = perc_group, 
+                    y = jday)) +
+    geom_point(size = 3, color = "#3C672C") +
+    geom_hline(yintercept = 183) +
+    labs(y = "DOY",
+         x = "Percentile",
+         caption = "Cumulative Count Percentiles of Aquatic Taxa Emergence Data") +
+    facet_grid(. ~ year) +
+    theme_bw())
+
+# Export figure.
+# ggsave(plot = fig6.0,
+#        filename = "figures/perc_emerge_W6_032724.jpg",
+#        width = 28,
+#        height = 10,
+#        units = "cm")
+
 (fig6 <- ggplot(dat_perc %>%
                   # filtering out <.25 because that's a sampling artefact
                   filter(perc_group %in% c("0.25", "0.5", "0.75")), 
                 aes(x = perc_group, 
                     y = jday,
-                    color = watershed)) +
-    geom_jitter(size = 3, alpha = 0.8, width = 0.1) +
+                    color = watershed,
+                    alpha = code)) +
+    geom_jitter(size = 3, width = 0.1) +
+    scale_alpha_manual(values = c(0.4, 1), guide = "none") +
     geom_hline(yintercept = 183) +
     labs(y = "DOY",
          x = "Percentile",
@@ -266,8 +300,32 @@ dat_perc <- dat_aq %>%
 # Export figure.
 # ggsave(plot = fig6,
 #        filename = "figures/perc_emerge_all_032524.jpg",
-#        width = 35,
-#        height = 8,
+#        width = 30,
+#        height = 10,
+#        units = "cm")
+
+# Also, making a version of this plot so all sites are separately facetted.
+(fig6.2 <- ggplot(dat_perc %>%
+                  # filtering out <.25 because that's a sampling artefact
+                  filter(perc_group %in% c("0.25", "0.5", "0.75")), 
+                aes(x = perc_group, 
+                    y = jday,
+                    color = watershed)) +
+    geom_point(size = 6) +
+    geom_hline(yintercept = 183) +
+    labs(y = "DOY",
+         x = "Percentile",
+         caption = "Cumulative Count Percentiles of Aquatic Taxa Emergence Data") +
+    scale_color_manual(values = cal_palette("kelp2", n = 8, type = "continuous")) +
+    facet_grid(watershed ~ year) +
+    theme_bw() +
+    theme(text = element_text(size = 20), legend.position = "none"))
+
+# Export figure.
+# ggsave(plot = fig6.2,
+#        filename = "figures/perc_emerge_allfacets_032724.jpg",
+#        width = 30,
+#        height = 30,
 #        units = "cm")
   
 # End of script.
