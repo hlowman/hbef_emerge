@@ -163,4 +163,55 @@ fig45 <- fig4 / fig5
 #        height = 15,
 #        units = "cm")
 
+# Emily asked for a different kind of figure, so let's make that here.
+# Let's first create a separate dataset and append means.
+dat_w6 <- dat_8 %>%
+  filter(site == "W6") %>%
+  group_by(month) %>%
+  mutate(mean_monthly_temp = mean(temp, na.rm = TRUE),
+         mean_monthly_gageHt = mean(gageHt, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(Month = factor(month))
+
+(fig6 <- ggplot(dat_w6, aes(x = month, y = temp, color = Month)) +
+    geom_point(size = 3, shape = 1, fill = NA) +
+    scale_color_manual(values = cal_palette("lake",
+                                            n = 12,
+                                            type = "continuous")) +
+    geom_point(aes(y = mean_monthly_temp), size = 3, shape = 15, color = "black") +
+    scale_x_continuous(breaks = c(1,2,3,4,5,6,7,8,9,10,11,12)) +
+    labs(y = "Temperature (C)",
+         x = "Month",
+         caption = "Streamwater Temperature by Month in W6 (2017-2024)") +
+    theme_bw() +
+    theme(legend.position = "none"))
+
+# Export figure.
+# ggsave(plot = fig6,
+#        filename = "figures/temp_W6_pts_032724.jpg",
+#        width = 15,
+#        height = 8,
+#        units = "cm")
+
+# And let's do the same for the gage height data.
+(fig7 <- ggplot(dat_w6, aes(x = month, y = gageHt, color = Month)) +
+    geom_point(size = 3, shape = 1, fill = NA) +
+    scale_x_continuous(breaks = c(1,2,3,4,5,6,7,8,9,10,11,12)) +
+    scale_color_manual(values = cal_palette("casj",
+                                           n = 12,
+                                           type = "continuous")) +
+    geom_point(aes(y = mean_monthly_gageHt), size = 3, shape = 15, color = "black") +
+    labs(y = "Gage Height (ft)",
+         x = "Month",
+         caption = "Streamflow by Month in W6 (2017-2024)") +
+    theme_bw() +
+    theme(legend.position = "none"))
+
+# Export figure.
+# ggsave(plot = fig7,
+#        filename = "figures/gageht_W6_pts_032724.jpg",
+#        width = 15,
+#        height = 8,
+#        units = "cm")
+
 # End of script.
