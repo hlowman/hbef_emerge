@@ -126,6 +126,21 @@ dat_w6 <- dat_long %>%
 #        height = 20,
 #        units = "cm")
 
+# Looking at the timeseries overall.
+dat_w6_2 <- dat_long %>%
+  filter(watershed == 6) %>%
+  group_by(Date) %>%
+  # note, this will sum across all traps collected ina given week
+  summarize(total_count = sum(count, na.rm = TRUE)) %>%
+  ungroup()
+
+(fig2.2 <- ggplot(dat_w6_2, aes(x = Date, 
+                            y = total_count)) +
+    geom_point(color = "#6B6D9F") +
+    labs(y = "Count",
+         caption = "Watershed 6 Emergence Data") +
+    theme_bw())
+
 # Investigate when peak emergence occurred for aquatic species only.
 dat_peak_order <- dat_long %>%
   filter(Order %in% c("dipteran", "caddisfly", "mayfly", "stonefly")) %>%
@@ -173,6 +188,9 @@ dat_aq <- dat_long %>%
   group_by(watershed, year) %>%
   mutate(running_total = cumsum(replace_na(total_count, 0))) %>%
   ungroup()
+
+# Export this for use in making figures with physical timeseries.
+saveRDS(dat_aq, "data_working/aquatic_taxa_counts_032824.rds")
   
 (fig4 <- ggplot(dat_aq %>%
                   drop_na(year), 
