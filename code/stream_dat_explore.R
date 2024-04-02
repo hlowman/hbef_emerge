@@ -365,4 +365,71 @@ fig9 + plot_annotation(caption = 'Aquatic insect emergence, streamwater temperat
 #        height = 15,
 #        units = "cm")
 
+# And the same figure for W1 (since peak emergence was so late here).
+dat_w1 <- dat_8 %>%
+  filter(site == "W1")
+
+(fig10a <- ggplot(dat_inv %>%
+                   filter(watershed == 1), aes(x = Date,
+                                               y = total_count)) +
+    geom_point(color = "#6B6D9F", alpha = 0.8) +
+    geom_point(data = dat_peak_inv %>% 
+                 filter(watershed == 1),
+               aes(x = Date, y = total_count),
+               color = "#F28705", shape = 8) +
+    xlim(as.Date("2017-06-01"), 
+         as.Date("2023-12-31")) +
+    labs(y = "Weekly Emergence") +
+    theme_bw() +
+    theme(axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank()))
+
+(fig10b <- ggplot(dat_w1, aes(x = Date, y = temp)) +
+    geom_line(color = "#3793EC") +
+    # add lines delimiting dates of peak emergence
+    geom_vline(xintercept = as.Date("2018-06-11"), 
+               color = "#F28705", alpha = 0.5) +
+    geom_vline(xintercept = as.Date("2019-05-28"), 
+               color = "#F28705", alpha = 0.5) +
+    geom_vline(xintercept = as.Date("2020-05-26"), 
+               color = "#F28705", alpha = 0.5) +
+    geom_vline(xintercept = as.Date("2021-11-01"), 
+               color = "#F28705", alpha = 0.5) +
+    xlim(as.Date("2017-06-01"), 
+         as.Date("2023-12-31")) +
+    labs(y = "Temperature (C)") +
+    theme_bw() +
+    theme(axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank()))
+
+(fig10c <- ggplot(dat_w1, aes(x = Date, y = gageHt)) +
+    geom_line(color = "#8197A4") +
+    # add lines delimiting dates of peak emergence
+    geom_vline(xintercept = as.Date("2018-06-11"), 
+               color = "#F28705", alpha = 0.5) +
+    geom_vline(xintercept = as.Date("2019-05-28"), 
+               color = "#F28705", alpha = 0.5) +
+    geom_vline(xintercept = as.Date("2020-05-26"), 
+               color = "#F28705", alpha = 0.5) +
+    geom_vline(xintercept = as.Date("2021-11-01"), 
+               color = "#F28705", alpha = 0.5) +
+    xlim(as.Date("2017-06-01"), 
+         as.Date("2023-12-31")) +
+    labs(y = "Gage Height (ft)",
+         x = "Date") +
+    theme_bw())
+
+(fig10 <- fig10a / fig10b / fig10c)
+
+fig10 + plot_annotation(caption = 'Aquatic insect emergence, streamwater temperature, and streamflow for Watershed 1. Peak emergence dates are denoted in orange.')
+
+# Export figure.
+# ggsave(plot = fig10,
+#        filename = "figures/emerge_temp_gageht_W1_040224.jpg",
+#        width = 30,
+#        height = 15,
+#        units = "cm")
+
 # End of script.
