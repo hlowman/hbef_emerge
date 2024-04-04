@@ -41,6 +41,8 @@ hist(dat$spCond)
 hist(dat$temp)
 hist(dat$TDN)
 hist(dat$DOC)
+hist(dat$chla_M)
+hist(dat$chla_T)
 
 #### Plot ####
 
@@ -279,19 +281,42 @@ dat_peak_inv <- dat_inv %>%
                color = "#F28705", alpha = 0.5) +
     xlim(as.Date("2017-06-01"), 
          as.Date("2023-12-31")) +
-    labs(y = "Gage Height (ft)",
+    labs(y = "Gage Height (ft)") +
+    theme_bw() +
+    theme(axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank()))
+
+(fig8d <- ggplot(dat_w6, aes(x = Date, y = chla_T)) +
+    geom_line(color = "#609048") +
+    # add lines delimiting dates of peak emergence
+    geom_vline(xintercept = as.Date("2018-05-14"), 
+               color = "#F28705", alpha = 0.5) +
+    geom_vline(xintercept = as.Date("2019-05-20"), 
+               color = "#F28705", alpha = 0.5) +
+    geom_vline(xintercept = as.Date("2020-05-28"), 
+               color = "#F28705", alpha = 0.5) +
+    geom_vline(xintercept = as.Date("2021-05-17"), 
+               color = "#F28705", alpha = 0.5) +
+    geom_vline(xintercept = as.Date("2022-05-16"), 
+               color = "#F28705", alpha = 0.5) +
+    geom_vline(xintercept = as.Date("2023-05-30"), 
+               color = "#F28705", alpha = 0.5) +
+    xlim(as.Date("2017-06-01"), 
+         as.Date("2023-12-31")) +
+    labs(y = "Tile Chlorophyll a (mg/m2)",
          x = "Date") +
     theme_bw())
 
-(fig8 <- fig8a / fig8b / fig8c)
+(fig8 <- fig8a / fig8b / fig8c / fig8d)
 
 fig8 + plot_annotation(caption = 'Aquatic insect emergence, streamwater temperature, and streamflow for Watershed 6. Peak emergence dates are denoted in orange.')
 
 # Export figure.
 # ggsave(plot = fig8,
-#        filename = "figures/emerge_temp_gageht_W6_032824.jpg",
+#        filename = "figures/emerge_temp_gageht_chla_W6_040424.jpg",
 #        width = 30,
-#        height = 15,
+#        height = 20,
 #        units = "cm")
 
 # So, it seems while peak emergence dates remain relatively stable
@@ -350,19 +375,37 @@ dat_w5 <- dat_8 %>%
                color = "#F28705", alpha = 0.5) +
     xlim(as.Date("2017-06-01"), 
          as.Date("2023-12-31")) +
-    labs(y = "Gage Height (ft)",
+    labs(y = "Gage Height (ft)") +
+    theme_bw() +
+    theme(axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank()))
+
+(fig9d <- ggplot(dat_w5, aes(x = Date, y = chla_T)) +
+    geom_line(color = "#609048") +
+    # add lines delimiting dates of peak emergence
+    geom_vline(xintercept = as.Date("2018-06-04"), 
+               color = "#F28705", alpha = 0.5) +
+    geom_vline(xintercept = as.Date("2019-05-28"), 
+               color = "#F28705", alpha = 0.5) +
+    geom_vline(xintercept = as.Date("2020-05-26"), 
+               color = "#F28705", alpha = 0.5) +
+    xlim(as.Date("2017-06-01"), 
+         as.Date("2023-12-31")) +
+    labs(y = "Tile Chlorophyll a (mg/m2)",
          x = "Date") +
     theme_bw())
 
-(fig9 <- fig9a / fig9b / fig9c)
+
+(fig9 <- fig9a / fig9b / fig9c / fig9d)
 
 fig9 + plot_annotation(caption = 'Aquatic insect emergence, streamwater temperature, and streamflow for Watershed 5. Peak emergence dates are denoted in orange. Note, only 2018-2020 have been counted in full.')
 
 # Export figure.
 # ggsave(plot = fig9,
-#        filename = "figures/emerge_temp_gageht_W5_032824.jpg",
+#        filename = "figures/emerge_temp_gageht_chla_W5_040424.jpg",
 #        width = 30,
-#        height = 15,
+#        height = 20,
 #        units = "cm")
 
 # And the same figure for W1 (since peak emergence was so late here).
@@ -417,19 +460,38 @@ dat_w1 <- dat_8 %>%
                color = "#F28705", alpha = 0.5) +
     xlim(as.Date("2017-06-01"), 
          as.Date("2023-12-31")) +
-    labs(y = "Gage Height (ft)",
+    labs(y = "Gage Height (ft)") +
+    theme_bw() +
+    theme(axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank()))
+
+(fig10d <- ggplot(dat_w1, aes(x = Date, y = chla_T)) +
+    geom_line(color = "#609048") +
+    # add lines delimiting dates of peak emergence
+    geom_vline(xintercept = as.Date("2018-06-11"), 
+               color = "#F28705", alpha = 0.5) +
+    geom_vline(xintercept = as.Date("2019-05-28"), 
+               color = "#F28705", alpha = 0.5) +
+    geom_vline(xintercept = as.Date("2020-05-26"), 
+               color = "#F28705", alpha = 0.5) +
+    geom_vline(xintercept = as.Date("2021-11-01"), 
+               color = "#F28705", alpha = 0.5) +
+    xlim(as.Date("2017-06-01"), 
+         as.Date("2023-12-31")) +
+    labs(y = "Tile Chlorophyll a (mg/m2)",
          x = "Date") +
     theme_bw())
 
-(fig10 <- fig10a / fig10b / fig10c)
+(fig10 <- fig10a / fig10b / fig10c / fig10d)
 
 fig10 + plot_annotation(caption = 'Aquatic insect emergence, streamwater temperature, and streamflow for Watershed 1. Peak emergence dates are denoted in orange.')
 
 # Export figure.
 # ggsave(plot = fig10,
-#        filename = "figures/emerge_temp_gageht_W1_040224.jpg",
+#        filename = "figures/emerge_temp_gageht_chla_W1_040424.jpg",
 #        width = 30,
-#        height = 15,
+#        height = 20,
 #        units = "cm")
 
 # End of script.
