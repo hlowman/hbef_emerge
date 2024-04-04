@@ -17,6 +17,7 @@ library(here)
 library(tidyverse)
 library(lubridate)
 library(calecopal)
+library(viridis)
 
 # Load data.
 dat <- read_csv("data_raw/sticky_trap_counts.csv")
@@ -140,6 +141,30 @@ dat_w6_2 <- dat_long %>%
     labs(y = "Count",
          caption = "Watershed 6 Emergence Data") +
     theme_bw())
+
+# Also curious, do stonefly and dipteran numbers correlate?
+dat_sd <- dat_order %>%
+  filter(Order %in% c("dipteran", "stonefly")) %>%
+  mutate(Year = year(Date)) %>%
+  group_by(watershed, Year, Order) %>%
+  summarize(annual_count = sum(total_count)) %>%
+  ungroup() %>%
+  drop_na(Year) %>%
+  pivot_wider(names_from = Order, values_from = annual_count)
+
+(fig_stone_black <- ggplot(dat_sd, aes(x = dipteran,
+                                      y = stonefly,
+                                      color = watershed)) +
+  geom_point(size = 3) +
+  scale_color_viridis(discrete = TRUE) +
+  theme_bw())
+
+# Export figure.
+ggsave(plot = fig_stone_black,
+       filename = "figures/annual_stonefly_blackfly_040424.jpg",
+       width = 15,
+       height = 10,
+       units = "cm")
 
 # Investigate when peak emergence occurred for aquatic species only.
 dat_peak_order <- dat_long %>%
