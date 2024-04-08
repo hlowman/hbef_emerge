@@ -160,11 +160,11 @@ dat_sd <- dat_order %>%
   theme_bw())
 
 # Export figure.
-ggsave(plot = fig_stone_black,
-       filename = "figures/annual_stonefly_blackfly_040424.jpg",
-       width = 15,
-       height = 10,
-       units = "cm")
+# ggsave(plot = fig_stone_black,
+#        filename = "figures/annual_stonefly_blackfly_040424.jpg",
+#        width = 15,
+#        height = 10,
+#        units = "cm")
 
 # Investigate when peak emergence occurred for aquatic species only.
 dat_peak_order <- dat_long %>%
