@@ -26,7 +26,7 @@ dat <- read_csv("data_raw/sticky_trap_counts_040824.csv")
 
 #### Tidy ####
 
-# First, need to correct the sole incorrect date.
+# First, need to correct an incorrect date.
 dat[1393, 4] <- "2020-08-03"
 
 # And quickly check the data structure.
@@ -162,6 +162,77 @@ dat_sum_wide <- dat_sum %>%
 gtsave(data = table3,
        filename = "figures/annual_emerge_table_040824.png")
 
-#### Kurtosis ####
+#### Duration ####
+
+# Add running (cumulative) total to data.
+dat_total_weekly <- dat_total_weekly %>%
+  group_by(watershed, Year) %>%
+  mutate(running_total = cumsum(replace_na(total_count, 0))) %>%
+  ungroup()
+
+# Pull out maximum count data.
+dat_max <- dat_total_weekly %>%
+  group_by(watershed, Year) %>%
+  slice(which.max(running_total)) %>%
+  ungroup() %>%
+  rename(sum_total = running_total) %>%
+  select(watershed, Year, sum_total)
+
+# And add to original dataset.
+dat_total_weekly <- left_join(dat_total_weekly, dat_max) %>%
+  mutate(percentile = running_total/sum_total)
+
+# And finally calculate the 5th and 95th percentiles to
+# estimate emergence duration.
+dat_duration <- dat_total_weekly %>%
+  # create new julian day column
+  mutate(jday = yday(Date)) %>%
+  # creates a new column that assigns each observation to a group
+  mutate(perc_group = factor(case_when(percentile < 0.05 ~ "<0.05",
+                                       percentile >= 0.05 & 
+                                         percentile < 0.95 ~ "0.05",
+                                       percentile >= 0.95 ~ "0.95"),
+                             levels = c("<0.05", "0.05", "0.95"))) %>%
+  # and now I want to pull out the first instance in each group
+  group_by(watershed, Year, perc_group) %>%
+  slice(which.min(jday)) %>%
+  ungroup()
+
+# And widen for plotting.
+dat_duration_wide <- dat_duration %>%
+  select(watershed, Year, perc_group, jday) %>%
+  pivot_wider(names_from = perc_group, values_from = jday) %>%
+  select(watershed, Year, `0.05`, `0.95`) %>%
+  mutate(year = factor(Year))
+
+# Plot.
+(fig_duration <- ggplot(dat_duration_wide,
+                        aes(y = year)) +
+    geom_linerange(aes(xmin = `0.05`, xmax = `0.95`)) +
+    geom_point(aes(x = `0.05`), size = 3,
+               shape = 21, fill = "#B5C861") +
+    geom_point(aes(x = `0.95`), size = 3,
+               shape = 21, fill = "#976153") +
+    labs(x = "DOY", y = "Year") +
+    theme_bw() +
+    facet_grid(watershed~., scales = "free"))
+
+# Export figure.
+# ggsave(plot = fig_duration,
+#        filename = "figures/duration_emerge_041124.jpg",
+#        width = 10,
+#        height = 20,
+#        units = "cm")
+
+#### Join indices ####
+
+dat_peak <- dat_peak %>%
+  rename(Date_peak = Date,
+         total_count_peak = total_count,
+         jday_peak = jday)
+
+dat_indices <- full_join(dat_peak, dat_sum,
+                         by = c("watershed",
+                                "Year"))
 
 # End of script.
