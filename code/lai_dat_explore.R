@@ -50,19 +50,34 @@ write.table(
 
 #### Process data from AppEARS ####
 
-# First, unpack the .zip file created.
-MOD_unpack <- StreamLight::AppEEARS_unpack_QC(
-  zip_file = "HubbardBrook.zip", 
-  zip_dir = "data_raw", 
-  request_sites[, "Site_ID"])
+# First, examine the LAI data.
+lai_data <- read_csv("data_raw/HB_LAI_AppEEARS/Hubbard-Brook-LAI-MCD15A3H-061-results.csv")
 
-# Then, process and plot the data using the "gu" fit 
-# (i.e.,)
-MOD_processed <- StreamLight::AppEEARS_proc(
-  unpacked_LAI = MOD_unpack,  
-  fit_method = "Gu", 
-  plot = TRUE)
+# Then, plot the data
+# Cannot use StreamLightUtils package unfortunately
+# due to discontinuation of rgdal, so doing it manually
+(lai_plot <- ggplot(lai_data, aes(x = Date, y = MCD15A3H_061_Lai_500m)) +
+    geom_point() +
+    labs(x = "Date", y = "LAI") +
+    theme_bw() +
+    facet_wrap(.~ID))
+
+# Export data.
+saveRDS(lai_data, "data_working/hb_lai_043024.rds")
 
 #### Calculate dates when median is reached in spring/fall ####
+
+# Need to add columns to estimate percentage of maximum,
+# and then mark these dates in spring/fall.
+lai_data <- lai_data %>%
+  mutate(year = year(Date)) %>%
+  group_by(ID, year) %>%
+  mutate(max_LAI = max(MCD15A3H_061_Lai_500m)) %>%
+  mutate(perc_LAI = MCD15A3H_061_Lai_500m/max_LAI) %>%
+  ungroup()
+
+# Next, need to figure out Phil's smoothing technique to
+# calculate median on the way up and down since these values
+# bounce around some.
 
 # End of script
