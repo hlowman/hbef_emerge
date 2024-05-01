@@ -250,4 +250,25 @@ plot(lai_processed$W6$Date, lai_processed$W6$LAI_proc)
 # Export LAI data for future use.
 saveRDS(lai_processed, "data_working/hb_lai_processed_050124.rds")
 
+# Only because a lot of these are flat-topped, I'm curious to look at the
+# data quality distribution of these sites.
+# Re-creating column added above.
+lai_data <- lai_data %>%
+  mutate(w = case_when(MCD15A3H_061_FparLai_QC_SCF_QC %in% c("0b000", "0b001") ~ 1, #wmax
+                       MCD15A3H_061_FparLai_QC_SCF_QC %in% c("0b010", "0b011") ~ 0.5, #wmid
+                       MCD15A3H_061_FparLai_QC_SCF_QC %in% c("0b100") ~ 0.2, #wmin
+                       TRUE ~ NA))
+
+# And plotting number of quality bins
+ggplot(lai_data, aes(x = MCD15A3H_061_FparLai_QC_SCF_QC,
+                     fill = MCD15A3H_061_FparLai_QC_SCF_QC)) +
+  geom_bar() +
+  theme_bw() +
+  labs(y = "Count", x = "QC Category") +
+  facet_grid(ID~.) +
+  theme(legend.position = "none")
+
+# Watersheds 1-6 have a lot of "mid" range values, which is probably causing those flatter
+# tops. HBK and W9 less so.
+
 # End of script.
