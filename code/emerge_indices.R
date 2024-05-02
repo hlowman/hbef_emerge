@@ -203,7 +203,8 @@ dat_duration_wide <- dat_duration %>%
   select(watershed, Year, perc_group, jday) %>%
   pivot_wider(names_from = perc_group, values_from = jday) %>%
   select(watershed, Year, `0.05`, `0.95`) %>%
-  mutate(year = factor(Year))
+  mutate(year = factor(Year)) %>%
+  mutate(duration = `0.95` - `0.05`)
 
 # Plot.
 (fig_duration <- ggplot(dat_duration_wide,
@@ -234,5 +235,86 @@ dat_peak <- dat_peak %>%
 dat_indices <- full_join(dat_peak, dat_sum,
                          by = c("watershed",
                                 "Year"))
+
+dat_indices <- full_join(dat_indices, dat_duration_wide,
+                         by = c("watershed",
+                                "Year"))
+
+# Plot indices versus on another.
+(fig1_ind <- ggplot(dat_indices, aes(x = duration,
+                                     y = annual_count)) +
+    geom_point(aes(color = watershed), size = 3) +
+    scale_color_manual(values = cal_palette("figmtn")) +
+    labs(x = "Duration of Emergence (days)",
+         y = "Annual Total Emergence (individuals)",
+         color = "Watershed") +
+    theme_bw() +
+    theme(legend.position = "none"))
+
+(fig2_ind <- ggplot(dat_indices, aes(x = duration,
+                                     y = jday_peak)) +
+    geom_point(aes(color = watershed), size = 3) +
+    scale_color_manual(values = cal_palette("figmtn")) +
+    labs(x = "Duration of Emergence (days)",
+         y = "Peak Emergence DOY",
+         color = "Watershed") +
+    theme_bw() +
+    theme(legend.position = "none"))
+
+(fig3_ind <- ggplot(dat_indices, aes(x = duration,
+                                     y = total_count_peak)) +
+    geom_point(aes(color = watershed), size = 3) +
+    scale_color_manual(values = cal_palette("figmtn")) +
+    labs(x = "Duration of Emergence (days)",
+         y = "Peak Emergence (individuals)",
+         color = "Watershed") +
+    theme_bw() +
+    theme(legend.position = "none"))
+
+(fig4_ind <- ggplot(dat_indices, aes(x = jday_peak,
+                                     y = annual_count)) +
+    geom_point(aes(color = watershed), size = 3) +
+    scale_color_manual(values = cal_palette("figmtn")) +
+    labs(x = "Peak Emergence DOY",
+         y = "Annual Total Emergence (individuals)",
+         color = "Watershed") +
+    theme_bw() +
+    theme(legend.position = "none"))
+
+(fig5_ind <- ggplot(dat_indices, aes(x = total_count_peak,
+                                     y = annual_count)) +
+    geom_point(aes(color = watershed), size = 3) +
+    scale_color_manual(values = cal_palette("figmtn")) +
+    labs(x = "Peak Emergence (individuals)",
+         y = "Annual Total Emergence (individuals)",
+         color = "Watershed") +
+    theme_bw())
+
+(fig6_ind <- ggplot(dat_indices, aes(x = jday_peak,
+                                     y = total_count_peak)) +
+    geom_point(aes(color = watershed), size = 3) +
+    scale_color_manual(values = cal_palette("figmtn")) +
+    labs(x = "Peak Emergence DOY",
+         y = "Peak Emergence (individuals)",
+         color = "Watershed") +
+    theme_bw() +
+    theme(legend.position = "none"))
+
+# Combine into a single plot.
+(fig_all_indices <- (fig1_ind | fig2_ind | fig3_ind) /
+  (fig4_ind | fig6_ind | fig5_ind))
+
+# Export figure.
+# ggsave(plot = fig_all_indices,
+#        filename = "figures/emerge_indices_050224.jpg",
+#        width = 30,
+#        height = 15,
+#        units = "cm")
+
+# Hmmm, duration, it seems, may be less of a driver/important metric
+# than timing and magnitude of the peak (since this is most strongly
+# correlated with annual total emergence).
+# There may also be a strong artefact of collection timing to the
+# duration window, which may confound findings.
 
 # End of script.
