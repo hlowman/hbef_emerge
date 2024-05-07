@@ -272,4 +272,68 @@ ggplot(dat_long, aes(x = Date, y = Site_ID, color = Season)) +
   labs(x = "Date", y = "Site") +
   theme_bw()
 
+# Trying another format to see if I can get a gantt-type chart
+# working.
+dat_wide <- join3 %>%
+  mutate(Warming_date = yearyearday(Year, Warming),
+         Leaf_date = yearyearday(Year, Leaf),
+         Cooling_date = yearyearday(Year, Cooling),
+         Snow_date = yearyearday(Year, Snow)) %>%
+  select(Site_ID, Year, Warming_date, Leaf_date,
+         Cooling_date, Snow_date) %>%
+  rename("Warming_start" = "Warming_date",
+         "Leaf_start" = "Leaf_date",
+         "Cooling_start" = "Cooling_date",
+         "Snow_start" = "Snow_date") %>%
+  # Need to add special column for next years warming
+  # otherwise snow plots the WHOLE year
+  # This is proving very difficult with the lead() function
+  # for some reason, so hard coding it for the moment
+  mutate(next_Warming_start = c("2019-03-15","2020-03-07","2021-03-09", NA,
+                                "2019-03-28","2020-03-07", NA,
+                                "2019-03-19","2020-02-23", NA,
+                                "2019-03-29","2020-03-03", NA, 
+                                "2019-03-18","2020-02-24","2021-03-09", NA,
+                                "2019-03-18","2020-03-03","2021-03-09",
+                                "2022-02-13","2023-04-04", NA,
+                                "2019-03-28","2020-03-09", NA,
+                                NA, NA, NA, NA, NA, NA,
+                                NA, NA, NA, NA, NA, NA,
+                                NA, NA, NA, NA, NA, NA,
+                                NA, NA, NA, NA, NA, NA,
+                                NA, NA, NA, NA, NA, NA)) %>%
+  mutate(next_Warming_start = ymd(next_Warming_start))
+
+(season_fig <- ggplot(dat_wide, aes(y = Site_ID)) +
+  # warming season
+  geom_linerange(aes(xmin = Warming_start,
+                     xmax = Leaf_start),
+                 size = 5,
+                 color = "#FFAA00") +
+  # leaf season
+  geom_linerange(aes(xmin = Leaf_start,
+                     xmax = Cooling_start),
+                 size = 5,
+                 color = "#609048") +
+  # cooling season
+  geom_linerange(aes(xmin = Cooling_start,
+                     xmax = Snow_start),
+                 size = 5,
+                 color = "#D46F10") +
+  # snow season
+  geom_linerange(aes(xmin = Snow_start,
+                     xmax = next_Warming_start), # CAREFUL HERE
+                 size = 5,
+                 color = "#69B9FA") +
+  labs(x = "Date", y = "Site") +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  theme_bw())
+
+# Save plot.
+# ggsave(plot = season_fig,
+#        filename = "figures/seasons_pheno_050724.jpg",
+#        width = 20,
+#        height = 10,
+#        units = "cm")
+
 # End of script.
