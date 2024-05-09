@@ -189,10 +189,14 @@ snow_first <- snow_data_2017 %>%
   # are two, so I need to select only the first one.
   group_by(slope, WINTER) %>%
   slice_head(n = 1) %>%
-  ungroup()
-
-# CAUTION: There is no W 2022/2023 data for the South-facing slope,
-# or the HQ sites, so need to omit those for now.
+  ungroup() %>%
+  # Also, there are a few incorrect dates at the beginning
+  # of certain records, so I need to fix these
+  mutate(date_ed = case_when(Site == "STA2" & WINTER == 2023 ~
+                               ymd("2022-11-29"),
+                             Site == "STAHQ" & WINTER == 2023 ~
+                               ymd("2022-11-29"),
+                             TRUE ~ date))
 
 # Snowcourse 2 is in W1. Snowcourse 9 is in W6. - SOUTH (facing)
 # Snowcourse 17 & 19 are in W8. - NORTH (facing)
@@ -200,16 +204,13 @@ snow_first <- snow_data_2017 %>%
 
 # Trim dataset for better merging.
 snow_start <- snow_first %>%
-  select(date, slope) %>%
-  mutate(Year = year(date)) %>%
-  mutate(Snow = yday(date)) %>%
+  select(date_ed, slope) %>%
+  mutate(Year = year(date_ed)) %>%
+  mutate(Snow = yday(date_ed)) %>%
   # Trim date that doesn't apply.
-  filter(date > ymd("2017-06-01")) %>%
+  filter(date_ed > ymd("2017-06-01")) %>%
   # Removing excess date column
-  select(-date)
-
-# And trim duplicate years.
-snow_start <- snow_start[-c(6,18),]
+  select(-date_ed)
 
 #### Join Seasons ####
 
@@ -230,7 +231,7 @@ join3 <- join3 %>%
   select(Site_ID, slope, Year, Warming, Leaf, Cooling, Snow)
 
 # Export for future use.
-#saveRDS(join3, "data_working/season_dates_pheno_050724.rds")
+#saveRDS(join3, "data_working/season_dates_pheno_050924.rds")
 
 #### Plot Seasons ####
 
@@ -297,11 +298,14 @@ dat_wide <- join3 %>%
                                 "2019-03-18","2020-03-03","2021-03-09",
                                 "2022-02-13","2023-04-04", NA,
                                 "2019-03-28","2020-03-09", NA,
-                                NA, NA, NA, NA, NA, NA,
-                                NA, NA, NA, NA, NA, NA,
-                                NA, NA, NA, NA, NA, NA,
-                                NA, NA, NA, NA, NA, NA,
-                                NA, NA, NA, NA, NA, NA)) %>%
+                                NA, NA, NA, NA, NA, NA, NA,
+                                "2018-02-20", NA, NA, 
+                                "2018-02-20", NA, NA, NA,
+                                "2018-02-17", NA, NA, NA,
+                                "2018-03-09", NA, NA, NA, 
+                                "2018-02-12", NA, NA,
+                                "2018-03-29", 
+                                "2018-03-03", NA, NA, NA)) %>%
   mutate(next_Warming_start = ymd(next_Warming_start))
 
 (season_fig <- ggplot(dat_wide, aes(y = Site_ID)) +
@@ -331,7 +335,7 @@ dat_wide <- join3 %>%
 
 # Save plot.
 # ggsave(plot = season_fig,
-#        filename = "figures/seasons_pheno_050724.jpg",
+#        filename = "figures/seasons_pheno_050924.jpg",
 #        width = 20,
 #        height = 10,
 #        units = "cm")
