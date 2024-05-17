@@ -8,7 +8,7 @@
 # the HBEF aquatic insect emergence data.
 
 # Data was downloaded from https://hbwater.org/restricted_QAQC/
-# on April 8, 2024.
+# on May 17, 2024.
 
 #### Setup ####
 
@@ -22,7 +22,7 @@ library(gt)
 library(webshot2)
 
 # Load data.
-dat <- read_csv("data_raw/sticky_trap_counts_040824.csv")
+dat <- read_csv("data_raw/sticky_trap_counts_051724.csv")
 
 #### Tidy ####
 
@@ -94,6 +94,20 @@ dat_peak <- dat_total_weekly %>%
   slice(which.max(total_count)) %>%
   mutate(jday = yday(Date)) %>%
   ungroup()
+
+# Create peak emergence dataset specific to summer
+# peak dates.
+dat_peak_summer <- dat_total_weekly %>%
+  mutate(month = month(Date)) %>%
+  filter(month < 9) %>%
+  group_by(watershed, Year) %>%
+  slice(which.max(total_count)) %>%
+  mutate(jday = yday(Date)) %>%
+  ungroup()
+
+# Export for use in seasonal timetable.
+# saveRDS(dat_peak_summer,
+#         "data_working/peak_emerge_dates_051724.rds")
 
 # And reformat for easier comparison.
 # Number of individuals

@@ -10,6 +10,10 @@
 # Warming, snow and canopy-free season (Warming)
 # START: start of snowmelt (1st changepoint in Q)
 
+# Warming season to peak emergence
+# START: start of snowmelt (1st changepoint in Q)
+# END: date of peak mid-year emergence
+
 # Leaf season (Leaf)
 # START: first date of 50% leaf area index (LAI) surpassed
 
@@ -29,10 +33,13 @@ library(lubridate)
 #### Data ####
 
 # Load snowmelt data from Danielle.
-snowmelt_data <- read_csv("data_raw/HB_spring_melt_duration_emerge.csv")
+snowmelt_data <- read_csv("data_raw/HB_spring_melt_duration_emerge_051724.csv")
 
 # Load smoothed MODIS LAI data.
 lai_data <- readRDS("data_working/hb_lai_processed_050124.rds")
+
+# Load peak emergence dates.
+peak_data <- readRDS("data_working/peak_emerge_dates_051724.rds")
 
 # Load snow course data.
 snow_data <- read_csv("data_raw/HBEF_snowcourse_1956-2023.csv")
@@ -44,9 +51,10 @@ snow_data <- read_csv("data_raw/HBEF_snowcourse_1956-2023.csv")
 # week prior to max SWE and three weeks after snow disappearance.
 
 snowmelt_start <- snowmelt_data %>%
-  select(site_id, Yr, start_day) %>%
-  rename("Site_ID" = "site_id",
-         "Year" = "Yr",
+  mutate(Site_ID = case_when(site_id == "HB" ~ "HBK",
+                             TRUE ~ site_id)) %>%
+  select(Site_ID, Yr, start_day) %>%
+  rename("Year" = "Yr",
          "Warming" = "start_day")
 
 #### Leaf Start Date ####
@@ -103,6 +111,21 @@ lai_leaf_starts <- lapply(lai_data, function(x) leaf_start(x))
 leaf_start <- plyr::ldply(lai_leaf_starts, data.frame) %>%
   rename("Site_ID" = ".id",
          "Leaf" = "DOY")
+
+#### Peak Date ####
+
+# Format the peak emergence dataset properly.
+peak_start <- peak_data %>%
+  mutate(Site_ID = case_when(watershed == 1 ~ "W1",
+                   watershed == 2 ~ "W2",
+                   watershed == 3 ~ "W3",
+                   watershed == 4 ~ "W4",
+                   watershed == 5 ~ "W5",
+                   watershed == 6 ~ "W6",
+                   watershed == 9 ~ "W9",
+                   TRUE ~ "HBK")) %>%
+  select(Site_ID, Year, jday) %>%
+  rename("Peak" = "jday")
 
 #### Cooling Start Date ####
 
@@ -226,14 +249,17 @@ join2$slope <- case_when(join2$Site_ID == "HBK" ~ "HQ",
 
 join3 <- full_join(join2, snow_start)
 
+# Add peak emergence dates.
+join4 <- full_join(join3, peak_start)
+
 # Re-organize a bit.
-join3 <- join3 %>%
-  select(Site_ID, slope, Year, Warming, Leaf, Cooling, Snow)
+join4 <- join4 %>%
+  select(Site_ID, slope, Year, 
+         Warming, Leaf, Peak, 
+         Cooling, Snow)
 
 # Export for future use.
-#saveRDS(join3, "data_working/season_dates_pheno_050924.rds")
-
-#### Plot Seasons ####
+# saveRDS(join4, "data_working/season_dates_pheno_051724.rds")
 
 # Using function to calculate date from DOY and year alone, link here : 
 # https://stackoverflow.com/questions/63963616/julian-day-to-date-vector
@@ -244,23 +270,28 @@ yearyearday <- function(yr, yd) {
 }
 
 # Need to re-format a bit before plotting.
-dat_long <- join3 %>%
+dat_long <- join4 %>%
   mutate(Warming_date = yearyearday(Year, Warming),
          Leaf_date = yearyearday(Year, Leaf),
+         Peak_date = yearyearday(Year, Peak),
          Cooling_date = yearyearday(Year, Cooling),
          Snow_date = yearyearday(Year, Snow)) %>%
   select(Site_ID, Year, Warming_date, Leaf_date,
-         Cooling_date, Snow_date) %>%
+         Peak_date, Cooling_date, Snow_date) %>%
   rename("Warming" = "Warming_date",
          "Leaf" = "Leaf_date",
+         "Peak" = "Peak_date",
          "Cooling" = "Cooling_date",
          "Snow" = "Snow_date") %>%
   pivot_longer(cols = Warming:Snow, names_to = "Season") %>%
   mutate(Date = ymd(value)) %>%
   mutate(Season = factor(Season, levels = c("Warming",
                                             "Leaf",
+                                            "Peak",
                                             "Cooling",
                                             "Snow")))
+
+#### Plot Seasons ####
 
 ggplot(dat_long, aes(x = Date, y = Site_ID, color = Season)) +
   geom_point(size = 3) +
@@ -339,5 +370,55 @@ dat_wide <- join3 %>%
 #        width = 20,
 #        height = 10,
 #        units = "cm")
+
+#### Compiled Season Durations ####
+
+# Create dataset with "start" and "end" columns for
+# each of the following seasons:
+# Warming
+# Warming to Peak
+# Leaf
+# Cooling
+# Snow
+
+dat_seasons <- dat_long %>%
+  select(Site_ID, Year, Season, Date) %>%
+  # arrange in order of date
+  arrange(Date) %>%
+  # group by site
+  group_by(Site_ID) %>%
+  # removing peak dates for now because this will complicate
+  # the lag steps
+  filter(Season != "Peak") %>%
+  rename("Start_Date" = "Date") %>%
+  # make a new leading values column
+  mutate(End_Date = lead(Start_Date)) %>%
+  ungroup() # omg yay!
+
+# Now, to make beginning of warming season to peak emergence data.
+dat_peak_only <- dat_long %>%
+  select(Site_ID, Year, Season, Date) %>%
+  # Removing leaf season so it calculates the leading date
+  # from start of warming to peak dates
+  filter(Season != "Leaf") %>%
+  arrange(Date) %>%
+  group_by(Site_ID) %>%
+  # keeping in Peak dates now, filter later
+  rename("Start_Date" = "Date") %>%
+  # make a new leading values column
+  mutate(End_Date = lead(Start_Date)) %>%
+  ungroup() %>%
+  # filter for "Warming" which begins with warming season
+  # and ends with peak emergence
+  filter(Season == "Warming") %>%
+  select(-Season) %>% # but also remove this column
+  # so that we can rename it properly
+  mutate(Season = "Warming to Peak")
+
+dat_seasons <- full_join(dat_seasons, dat_peak_only) %>%
+  arrange(End_Date, Site_ID)
+
+# Export as csv so can select only for years of interest
+write_csv(dat_seasons, "data_working/season_dates_pheno_wpeak_051724.csv")
 
 # End of script.
