@@ -39,7 +39,7 @@ snowmelt_data <- read_csv("data_raw/HB_spring_melt_duration_emerge_051724.csv")
 lai_data <- readRDS("data_working/hb_lai_processed_050124.rds")
 
 # Load peak emergence dates.
-peak_data <- readRDS("data_working/peak_emerge_dates_051724.rds")
+peak_data <- readRDS("data_working/peak_emerge_dates_052824.rds")
 
 # Load snow course data.
 snow_data <- read_csv("data_raw/HBEF_snowcourse_1956-2023.csv")
@@ -259,7 +259,7 @@ join4 <- join4 %>%
          Cooling, Snow)
 
 # Export for future use.
-# saveRDS(join4, "data_working/season_dates_pheno_051724.rds")
+# saveRDS(join4, "data_working/season_dates_pheno_052824.rds")
 
 # Using function to calculate date from DOY and year alone, link here : 
 # https://stackoverflow.com/questions/63963616/julian-day-to-date-vector
@@ -290,86 +290,6 @@ dat_long <- join4 %>%
                                             "Peak",
                                             "Cooling",
                                             "Snow")))
-
-#### Plot Seasons ####
-
-ggplot(dat_long, aes(x = Date, y = Site_ID, color = Season)) +
-  geom_point(size = 3) +
-  scale_color_manual(values = c("#FFAA00",
-                                "#609048",
-                                "#D46F10",
-                                "#69B9FA")) + 
-  # spring
-  #geom_linerange(aes(xmin = hms1a - Date, ymax = hms2a - Date)) +
-  labs(x = "Date", y = "Site") +
-  theme_bw()
-
-# Trying another format to see if I can get a gantt-type chart
-# working.
-dat_wide <- join3 %>%
-  mutate(Warming_date = yearyearday(Year, Warming),
-         Leaf_date = yearyearday(Year, Leaf),
-         Cooling_date = yearyearday(Year, Cooling),
-         Snow_date = yearyearday(Year, Snow)) %>%
-  select(Site_ID, Year, Warming_date, Leaf_date,
-         Cooling_date, Snow_date) %>%
-  rename("Warming_start" = "Warming_date",
-         "Leaf_start" = "Leaf_date",
-         "Cooling_start" = "Cooling_date",
-         "Snow_start" = "Snow_date") %>%
-  # Need to add special column for next years warming
-  # otherwise snow plots the WHOLE year
-  # This is proving very difficult with the lead() function
-  # for some reason, so hard coding it for the moment
-  mutate(next_Warming_start = c("2019-03-15","2020-03-07","2021-03-09", NA,
-                                "2019-03-28","2020-03-07", NA,
-                                "2019-03-19","2020-02-23", NA,
-                                "2019-03-29","2020-03-03", NA, 
-                                "2019-03-18","2020-02-24","2021-03-09", NA,
-                                "2019-03-18","2020-03-03","2021-03-09",
-                                "2022-02-13","2023-04-04", NA,
-                                "2019-03-28","2020-03-09", NA,
-                                NA, NA, NA, NA, NA, NA, NA,
-                                "2018-02-20", NA, NA, 
-                                "2018-02-20", NA, NA, NA,
-                                "2018-02-17", NA, NA, NA,
-                                "2018-03-09", NA, NA, NA, 
-                                "2018-02-12", NA, NA,
-                                "2018-03-29", 
-                                "2018-03-03", NA, NA, NA)) %>%
-  mutate(next_Warming_start = ymd(next_Warming_start))
-
-(season_fig <- ggplot(dat_wide, aes(y = Site_ID)) +
-  # warming season
-  geom_linerange(aes(xmin = Warming_start,
-                     xmax = Leaf_start),
-                 size = 5,
-                 color = "#FFAA00") +
-  # leaf season
-  geom_linerange(aes(xmin = Leaf_start,
-                     xmax = Cooling_start),
-                 size = 5,
-                 color = "#609048") +
-  # cooling season
-  geom_linerange(aes(xmin = Cooling_start,
-                     xmax = Snow_start),
-                 size = 5,
-                 color = "#D46F10") +
-  # snow season
-  geom_linerange(aes(xmin = Snow_start,
-                     xmax = next_Warming_start), # CAREFUL HERE
-                 size = 5,
-                 color = "#69B9FA") +
-  labs(x = "Date", y = "Site") +
-  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
-  theme_bw())
-
-# Save plot.
-# ggsave(plot = season_fig,
-#        filename = "figures/seasons_pheno_050924.jpg",
-#        width = 20,
-#        height = 10,
-#        units = "cm")
 
 #### Compiled Season Durations ####
 
@@ -419,6 +339,20 @@ dat_seasons <- full_join(dat_seasons, dat_peak_only) %>%
   arrange(End_Date, Site_ID)
 
 # Export as csv so can select only for years of interest
-write_csv(dat_seasons, "data_working/season_dates_pheno_wpeak_051724.csv")
+# write_csv(dat_seasons, "data_working/season_dates_pheno_wpeak_052824.csv")
+
+# Just checking to be sure these look alright.
+(season_fig2 <- ggplot(dat_seasons %>%
+                        filter(Season != "Warming to Peak"), 
+                      aes(y = Site_ID, color = Season)) +
+    geom_linerange(aes(xmin = Start_Date,
+                       xmax = End_Date),
+                   size = 8) +
+    scale_color_manual(values = c("#D46F10","#609048",
+                                  "#69B9FA","#FFAA00")) +
+    labs(x = "Date", y = "Site") +
+    scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+    theme_bw() +
+    theme(legend.position = "none"))
 
 # End of script.

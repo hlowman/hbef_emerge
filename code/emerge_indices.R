@@ -74,15 +74,18 @@ dat_long <- dat_long %>%
                                     "stonefly_small",
                                     "other_small") ~ "small"))
 
-# And create a dataset of total weekly emergence.
+# And create a dataset of total weekly emergence,
+# including ONLY aquatic taxa.
 dat_total_weekly <- dat_long %>%
+  filter(Order %in% c("caddisfly", "dipteran",
+                      "mayfly", "stonefly")) %>%
   group_by(watershed, Date) %>%
   summarize(total_count = sum(count, na.rm = TRUE)) %>%
   ungroup() %>%
   # dropping data with missing dates for now
   drop_na(Date)
 
-#### Peak Emergence ####
+#### Warming Peak Emergence ####
 
 # Calculate peak emergence by watershed and by year.
 
@@ -107,7 +110,21 @@ dat_peak_summer <- dat_total_weekly %>%
 
 # Export for use in seasonal timetable.
 # saveRDS(dat_peak_summer,
-#         "data_working/peak_emerge_dates_051724.rds")
+#         "data_working/peak_emerge_dates_052824.rds")
+
+# Create peak emergence dataset specific to fall
+# peak dates.
+dat_peak_fall <- dat_total_weekly %>%
+  mutate(month = month(Date)) %>%
+  filter(month > 8) %>%
+  group_by(watershed, Year) %>%
+  slice(which.max(total_count)) %>%
+  mutate(jday = yday(Date)) %>%
+  ungroup()
+
+# Export for use in seasonal timetable.
+# saveRDS(dat_peak_fall,
+#         "data_working/peak_emerge_dates_cooling_052824.rds")
 
 # And reformat for easier comparison.
 # Number of individuals
@@ -157,6 +174,10 @@ dat_sum <- dat_total_weekly %>%
   summarize(annual_count = sum(total_count, 
                                na.rm = TRUE)) %>%
   ungroup()
+
+# Export for use in analyses.
+# saveRDS(dat_sum,
+#         "data_working/sum_emerge_052824.rds")
 
 # And reformat for easier comparison.
 # Number of individuals
