@@ -146,6 +146,7 @@ all_var <- full_join(all_var, algal_trim)
 plot(all_var$annual_count_lag1, all_var$annual_count) # no trend
 
 plot(all_var$melt_duration_days, all_var$annual_count) # weakly negative
+plot(all_var$swe_max_mm, all_var$annual_count) # weakly positive
 plot(all_var$melt_duration_days, all_var$leaf_peak_count) # no trend
 plot(all_var$melt_duration_days, all_var$leaf_peak_jday) # no trend
 
