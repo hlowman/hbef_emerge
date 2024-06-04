@@ -23,6 +23,9 @@ library(ggcorrplot)
 # Date and magnitude of leaf season peak.
 leaf_peak_dat <- readRDS("data_working/peak_emerge_dates_052824.rds")
 
+# Magnitude of 3 weeks (peak emergence +/-1 week).
+leaf_peak_3wk_dat <- readRDS("data_working/peak_emerge_3wk_060424.rds")
+
 # Date and magnitude of later leaf/cooling season peak.
 later_peak_dat <- readRDS("data_working/peak_emerge_dates_cooling_052824.rds")
 
@@ -47,6 +50,9 @@ leaf_peak_dat <- leaf_peak_dat %>%
   rename(leaf_peak_count = total_count,
          leaf_peak_jday = jday)
 
+leaf_peak_3wk_dat <- leaf_peak_3wk_dat %>%
+  rename(leaf_peak_3wk_count = sum_total_3wk)
+
 # Trim later peak emergence dataset to columns of interest.
 later_peak_dat <- later_peak_dat %>%
   select(watershed, Year, total_count, jday) %>%
@@ -55,6 +61,7 @@ later_peak_dat <- later_peak_dat %>%
 
 # Join with cumulative emergence.
 resp_var <- full_join(sum_emerge_dat, leaf_peak_dat)
+resp_var <- full_join(resp_var, leaf_peak_3wk_dat)
 resp_var <- full_join(resp_var, later_peak_dat)
 
 #### Generate Covariates ####
@@ -160,6 +167,32 @@ algal_pre_peak <- full_join(ws_formatted, leaf_peak_trim,
   summarize(mean_chla_T_to_peak = mean(chla_T, na.rm = TRUE)) %>%
   ungroup()
 
+# Also going to create separate May, June, and combined chl a measures.
+algal_monthly <- ws_trim %>%
+  mutate(month = month(date)) %>%
+  group_by(site, Year, month) %>%
+  summarize(mean_chla_T_monthly = mean(chla_T, na.rm = TRUE)) %>%
+  ungroup()
+
+# and filter only for May/June months
+algal_mj <- algal_monthly %>%
+  filter(month %in% c(5,6)) %>%
+  # and replace NaN values
+  mutate_all(~ifelse(is.nan(.), NA, .)) %>%
+  # and pivot wider
+  pivot_wider(names_from = month, values_from = mean_chla_T_monthly) %>%
+  rename(mean_chla_T_may = `5`,
+         mean_chla_T_june = `6`) %>%
+  mutate(watershed = case_when(site == "W1" ~ "1",
+                               site == "W2" ~ "2",
+                               site == "W3" ~ "3",
+                               site == "W4" ~ "4",
+                               site == "W5" ~ "5",
+                               site == "W6" ~ "6",
+                               site == "W9" ~ "9",
+                               site == "HBK" ~ "HBK")) %>%
+  select(watershed, Year, mean_chla_T_may, mean_chla_T_june)
+
 #### Join ####
 
 # Join with snowmelt data.
@@ -168,6 +201,7 @@ all_var <- full_join(resp_var, melt_trim)
 # Join with algal data.
 all_var <- full_join(all_var, algal_trim)
 all_var <- full_join(all_var, algal_pre_peak)
+all_var <- full_join(all_var, algal_mj)
 
 #### Visualize ####
 
@@ -350,7 +384,7 @@ plot(all_var$mean_chla_T_leaf_lag1, all_var$annual_count) # even more negative
 
 # Select only variables of interest.
 all_var_trim <- all_var %>%
-  select(annual_count:mean_chla_T_to_peak) %>%
+  select(annual_count:mean_chla_T_june) %>%
   # remove years for which we have no data
   drop_na(annual_count) %>%
   # and replace NaN values

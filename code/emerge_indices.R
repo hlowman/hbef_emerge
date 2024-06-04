@@ -87,7 +87,7 @@ dat_total_weekly <- dat_long %>%
 
 #### Warming Peak Emergence ####
 
-# Calculate peak emergence by watershed and by year.
+# Calculate peak emergence by watershed and by year (single week).
 
 # Add year column to dataset.
 dat_total_weekly$Year <- year(dat_total_weekly$Date)
@@ -112,6 +112,31 @@ dat_peak_summer <- dat_total_weekly %>%
 # saveRDS(dat_peak_summer,
 #         "data_working/peak_emerge_dates_052824.rds")
 
+# Also, going to create peak emergence with a week on either side.
+# Select columns of interest from peak dataset.
+dat_peak_trim <- dat_peak %>%
+  rename(Date_peak = Date) %>%
+  select(watershed, Date_peak, Year)
+
+dat_peak_3wk <- left_join(dat_total_weekly, dat_peak_trim) %>%
+  mutate(peak_binary = case_when(Date == Date_peak ~ 1,
+                                 TRUE ~ 0)) %>%
+  group_by(watershed, Year) %>%
+  mutate(peak_lag = peak_binary - lag(peak_binary)) %>%
+  mutate(peak_lead = peak_binary - lead(peak_binary)) %>%
+  ungroup() %>%
+  filter(peak_lag > 0 |
+           peak_lag < 0 |
+           peak_lead > 0 |
+           peak_lead < 0) %>%
+  group_by(watershed, Year) %>%
+  summarize(sum_total_3wk = sum(total_count, na.rm = TRUE)) %>%
+  ungroup()
+
+# Export for use in seasonal timetable.
+# saveRDS(dat_peak_3wk,
+#         "data_working/peak_emerge_3wk_060424.rds")
+  
 # Create peak emergence dataset specific to fall
 # peak dates.
 dat_peak_fall <- dat_total_weekly %>%
