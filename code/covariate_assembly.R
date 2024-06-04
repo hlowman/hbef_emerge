@@ -13,6 +13,9 @@
 library(here)
 library(tidyverse)
 library(lubridate)
+library(calecopal)
+library(patchwork)
+library(ggcorrplot)
 
 # Load necessary datasets.
 
@@ -132,6 +135,31 @@ algal_trim <- algal_leaf %>%
   rename(mean_chla_T_leaf = mean_chla_T) %>%
   mutate(mean_chla_T_leaf_lag1 = lag(mean_chla_T_leaf))
 
+# Also, going to create a separate dataset that aggregates chl a
+# leading up to only peak emergence in each watershed.
+leaf_peak_dat$peak_Date <- as.Date(leaf_peak_dat$leaf_peak_jday-1, 
+                              origin = paste0(leaf_peak_dat$Year, 
+                                              "-01-01"))
+leaf_peak_trim <- leaf_peak_dat %>%
+  select(watershed, Year, peak_Date)
+
+ws_formatted <- ws_trim %>%
+  mutate(watershed = case_when(site == "W1" ~ "1",
+                               site == "W2" ~ "2",
+                               site == "W3" ~ "3",
+                               site == "W4" ~ "4",
+                               site == "W5" ~ "5",
+                               site == "W6" ~ "6",
+                               site == "W9" ~ "9",
+                               site == "HBK" ~ "HBK"))
+
+algal_pre_peak <- full_join(ws_formatted, leaf_peak_trim, 
+                            by = c("watershed", "Year")) %>%
+  group_by(watershed, Year) %>%
+  filter(date <= peak_Date) %>%
+  summarize(mean_chla_T_to_peak = mean(chla_T, na.rm = TRUE)) %>%
+  ungroup()
+
 #### Join ####
 
 # Join with snowmelt data.
@@ -139,18 +167,203 @@ all_var <- full_join(resp_var, melt_trim)
 
 # Join with algal data.
 all_var <- full_join(all_var, algal_trim)
+all_var <- full_join(all_var, algal_pre_peak)
 
 #### Visualize ####
 
 # Examine some of the correlation plots.
 plot(all_var$annual_count_lag1, all_var$annual_count) # no trend
-
 plot(all_var$melt_duration_days, all_var$annual_count) # weakly negative
 plot(all_var$swe_max_mm, all_var$annual_count) # weakly positive
 plot(all_var$melt_duration_days, all_var$leaf_peak_count) # no trend
 plot(all_var$melt_duration_days, all_var$leaf_peak_jday) # no trend
-
-plot(all_var$mean_chla_T_leaf, all_var$annual_count) # negatively correlated
+plot(all_var$mean_chla_T_leaf, all_var$annual_count) # neg correlated
 plot(all_var$mean_chla_T_leaf_lag1, all_var$annual_count) # even more negative
+
+# And create more official plots of the above.
+
+##### Annual Magnitude #####
+
+(fig1_count <- ggplot(all_var, aes(x = annual_count_lag1,
+                                  y = annual_count)) +
+    geom_point(color = "#E29244", size = 3) +
+    labs(x = "Previous Year's Count (Individuals)",
+         y = "Annual Count (Individuals)") +
+    theme_bw())
+
+(fig2_count <- ggplot(all_var, aes(x = mean_chla_T_leaf,
+                                   y = annual_count)) +
+    geom_point(color = "#F19E1F", size = 3) +
+    labs(x = "Mean Leaf Season Chl a",
+         y = "Annual Count (Individuals)") +
+    theme_bw())
+
+(fig3_count <- ggplot(all_var, aes(x = mean_chla_T_leaf_lag1,
+                                   y = annual_count)) +
+    geom_point(color = "#FCA601", size = 3) +
+    labs(x = "Previous Year's Mean Leaf Season Chl a",
+         y = "Annual Count (individuals)") +
+    theme_bw())
+
+(fig4_count <- ggplot(all_var, aes(x = melt_duration_days,
+                                   y = annual_count)) +
+    geom_point(color = "#E58609", size = 3) +
+    labs(x = "Snowmelt Duration (days)",
+         y = "Annual Count (individuals)") +
+    theme_bw())
+
+(fig5_count <- ggplot(all_var, aes(x = swe_max_mm,
+                                   y = annual_count)) +
+    geom_point(color = "#C17622", size = 3) +
+    labs(x = "Max. Snow Water Equivalent (mm)",
+         y = "Annual Count (individuals)") +
+    theme_bw())
+
+(fig_count_all <- fig1_count + fig2_count + fig3_count + fig4_count + fig5_count)
+
+# ggsave(plot = fig_count_all,
+#        filename = "figures/annual_covar_060424.jpg",
+#        width = 30,
+#        height = 20,
+#        units = "cm")
+
+##### Peak Magnitude #####
+
+(fig1_peak <- ggplot(all_var, aes(x = annual_count_lag1,
+                                  y = leaf_peak_count)) +
+    geom_point(color = "#79926E", size = 3) +
+    labs(x = "Previous Year's Annual Count (individuals)",
+         y = "Peak Emergence Magnitude (individuals)") +
+    theme_bw())
+
+(fig2_peak <- ggplot(all_var, aes(x = annual_count,
+                                  y = leaf_peak_count)) +
+    geom_point(color = "#51A8B0", size = 3) +
+    labs(x = "Annual Count (individuals)",
+         y = "Peak Emergence Magnitude (individuals)") +
+    theme_bw())
+
+(fig3_peak <- ggplot(all_var, aes(x = melt_duration_days,
+                                  y = leaf_peak_count)) +
+    geom_point(color = "#61B3E1", size = 3) +
+    labs(x = "Snowmelt duration (days)",
+         y = "Peak Emergence Magnitude (individuals)") +
+    theme_bw())
+
+(fig4_peak <- ggplot(all_var, aes(x = swe_max_mm,
+                                  y = leaf_peak_count)) +
+    geom_point(color = "#64B3F9", size = 3) +
+    labs(x = "Max. Snow Water Equivalent (mm)",
+         y = "Peak Emergence Magnitude (individuals)") +
+    theme_bw())
+
+(fig5_peak <- ggplot(all_var, aes(x = mean_chla_T_to_peak,
+                                  y = leaf_peak_count)) +
+    geom_point(color = "#64B3F9", size = 3) +
+    labs(x = "Mean chl a Before Peak",
+         y = "Peak Emergence Magnitude (individuals)") +
+    scale_x_log10() +
+    theme_bw())
+
+(fig_peak_all <- fig1_peak + fig2_peak + fig3_peak + fig4_peak + fig5_peak)
+ 
+# ggsave(plot = fig_peak_all,
+#        filename = "figures/peak_covar_060424.jpg",
+#        width = 30,
+#        height = 20,
+#        units = "cm")
+
+##### Peak Timing #####
+
+(fig1_peak_time <- ggplot(all_var, aes(x = leaf_peak_count,
+                                       y = leaf_peak_jday)) +
+    geom_point(color = "#5CA7F8", size = 3) +
+    labs(x = "Peak Emergence Magnitude (individuals)",
+         y = "Peak Emergence DOY") +
+    theme_bw())
+
+(fig2_peak_time <- ggplot(all_var, aes(x = annual_count,
+                                       y = leaf_peak_jday)) +
+    geom_point(color = "#549CF7", size = 3) +
+    labs(x = "Annual Count (individuals)",
+         y = "Peak Emergence DOY") +
+    theme_bw())
+
+(fig3_peak_time <- ggplot(all_var, aes(x = melt_duration_days,
+                                       y = leaf_peak_jday)) +
+    geom_point(color = "#4C91F7", size = 3) +
+    labs(x = "Snowmelt duration (days)",
+         y = "Peak Emergence DOY") +
+    theme_bw())
+
+(fig4_peak_time <- ggplot(all_var, aes(x = swe_max_mm,
+                                       y = leaf_peak_jday)) +
+    geom_point(color = "#5188E5", size = 3) +
+    labs(x = "Max. Snow Water Equivalent (mm)",
+         y = "Peak Emergence DOY") +
+    theme_bw())
+
+(fig_peaktime_all <- fig1_peak_time + fig2_peak_time + 
+    fig3_peak_time + fig4_peak_time)
+
+# ggsave(plot = fig_peaktime_all,
+#        filename = "figures/peaktime_covar_060424.jpg",
+#        width = 20,
+#        height = 20,
+#        units = "cm")
+
+##### Late Peak #####
+
+(fig1_latepeak <- ggplot(all_var, aes(x = leaf_peak_count,
+                                      y = later_peak_count)) +
+    geom_point(color = "#597FCD", size = 3) +
+    scale_y_log10() +
+    labs(x = "Peak Emergence Magnitude (individuals)",
+         y = "Later Peak Emergence Magnitude (individuals)") +
+    theme_bw())
+
+(fig2_latepeak <- ggplot(all_var, aes(x = annual_count,
+                                      y = later_peak_count)) +
+    geom_point(color = "#6176B6", size = 3) +
+    scale_y_log10() +
+    labs(x = "Annual Count (individuals)",
+         y = "Later Peak Emergence Magnitude (individuals)") +
+    theme_bw())
+
+(fig3_latepeak <- ggplot(all_var, aes(x = mean_chla_T_leaf,
+                                      y = later_peak_count)) +
+    geom_point(color = "#6B6D9F", size = 3) +
+    scale_y_log10() +
+    labs(x = "Mean Leaf Season Chl a",
+         y = "Later Peak Emergence Magnitude (individuals)") +
+    theme_bw())
+
+(fig_latepeak_all <- fig1_latepeak + fig2_latepeak + fig3_latepeak)
+
+# ggsave(plot = fig_latepeak_all,
+#        filename = "figures/latepeak_covar_060424.jpg",
+#        width = 30,
+#        height = 10,
+#        units = "cm")
+
+# And finally generate a summary correlation plot for comparison.
+
+# Select only variables of interest.
+all_var_trim <- all_var %>%
+  select(annual_count:mean_chla_T_to_peak) %>%
+  # remove years for which we have no data
+  drop_na(annual_count) %>%
+  # and replace NaN values
+  mutate_all(~ifelse(is.nan(.), NA, .))
+
+# Calculate correlations.
+corr_var <- cor(all_var_trim, use = "complete.obs")
+
+ggcorrplot(corr_var,
+           type = "lower",
+           lab = TRUE)
+
+# Appears the only one not explore above is the fall peak magnitude's
+# correlation with the previous summer's mean chl a concentration.
 
 # End of script.
