@@ -193,6 +193,55 @@ algal_mj <- algal_monthly %>%
                                site == "HBK" ~ "HBK")) %>%
   select(watershed, Year, mean_chla_T_may, mean_chla_T_june)
 
+##### Season Durations #####
+
+# Next, I'll be adding in the length of the preceding seasons, using the tidied dataset loaded above.
+
+seasons4 <- season_data %>%
+  filter(Season %in% c("Warming", "Leaf", 
+                       "Cooling", "Snow")) %>%
+  mutate(start_date = mdy(Start_Date),
+         end_date = mdy(End_Date))
+
+# and calculate the difference in dates
+seasons4 <- seasons4 %>%
+  mutate(duration = as.numeric(end_date - start_date))
+
+# and trim down/pivot to columns of interest
+seasons4_trim <- seasons4 %>%
+  select(Site_ID, Year, Season, duration) %>%
+  pivot_wider(names_from = Season, values_from = duration)
+
+# also need re-format and calculate appropriately lagged seasons
+seasons4_trim <- seasons4_trim %>%
+  rename(Leaf_duration = Leaf,
+         Cooling_duration = Cooling,
+         Snow_duration = Snow,
+         Warming_duration = Warming) %>%
+  group_by(Site_ID) %>%
+  # need to include:
+  # same year leaf, warming
+  # prior year snow, cooling, leaf
+  mutate(Snow_duration_lag1 = lag(Snow_duration),
+         Cooling_duration_lag1 = lag(Cooling_duration),
+         Leaf_duration_lag1 = lag(Leaf_duration)) %>%
+  ungroup()
+
+# and finally trim it down and add proper WS column
+seasons_trim <- seasons4_trim %>%
+  mutate(watershed = case_when(Site_ID == "W1" ~ "1",
+                               Site_ID == "W2" ~ "2",
+                               Site_ID == "W3" ~ "3",
+                               Site_ID == "W4" ~ "4",
+                               Site_ID == "W5" ~ "5",
+                               Site_ID == "W6" ~ "6",
+                               Site_ID == "W9" ~ "9",
+                               Site_ID == "HBK" ~ "HBK")) %>%
+  select(watershed, Year, 
+         Leaf_duration, Warming_duration,
+         Snow_duration_lag1, Cooling_duration_lag1,
+         Leaf_duration_lag1)
+
 #### Join ####
 
 # Join with snowmelt data.
@@ -202,6 +251,9 @@ all_var <- full_join(resp_var, melt_trim)
 all_var <- full_join(all_var, algal_trim)
 all_var <- full_join(all_var, algal_pre_peak)
 all_var <- full_join(all_var, algal_mj)
+
+# Join with seasonal durations.
+all_var <- left_join(all_var, seasons_trim)
 
 #### Visualize ####
 
@@ -384,7 +436,7 @@ plot(all_var$mean_chla_T_leaf_lag1, all_var$annual_count) # even more negative
 
 # Select only variables of interest.
 all_var_trim <- all_var %>%
-  select(annual_count:mean_chla_T_june) %>%
+  select(annual_count:Leaf_duration_lag1) %>%
   # remove years for which we have no data
   drop_na(annual_count) %>%
   # and replace NaN values
