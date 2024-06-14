@@ -42,6 +42,9 @@ ws_data <- read_csv("data_raw/HBEFdata_Current_2024-05-28.csv")
 # Edited seasonal dates based on phenology.
 season_data <-  read_csv("data_working/season_dates_pheno_wpeak_052824_trimmed.csv")
 
+# And flow/temperature summary metrics.
+qt_data <- read_csv("data_raw/QT_15min_EmergeSeasons_SummaryStats.csv")
+
 #### Tidy Emergence Indices ####
 
 # Trim leaf peak emergence dataset to columns of interest.
@@ -242,6 +245,115 @@ seasons_trim <- seasons4_trim %>%
          Snow_duration_lag1, Cooling_duration_lag1,
          Leaf_duration_lag1)
 
+##### Q & T metrics #####
+
+# Keep only the metrics of interest for now.
+qt_data_trim <- qt_data %>%
+  mutate(watershed = case_when(Site_ID == "W1" ~ "1",
+                               Site_ID == "W2" ~ "2",
+                               Site_ID == "W3" ~ "3",
+                               Site_ID == "W4" ~ "4",
+                               Site_ID == "W5" ~ "5",
+                               Site_ID == "W6" ~ "6",
+                               Site_ID == "W9" ~ "9",
+                               Site_ID == "HBK" ~ "HBK")) %>%
+  select(watershed, Year, Season,
+         mean_Q, medi_Q, max_Q, min_Q,
+         std_Q, CV_Q, mean_RBI,
+         mean_T, medi_T, max_T, min_T,
+         std_T, CV_T)
+
+# Must pivot to accommodate annual-level site data.
+qt_data_pivot <- qt_data_trim %>%
+  pivot_wider(values_from = mean_Q:CV_T, names_from = Season)
+
+# Similar to seasonal durations considered above, we are
+# most interested in
+# same year leaf, warming
+# prior year snow, cooling, leaf
+
+# So, let's first create the lagged snow/cooling/leaf data
+qt_data_pivot <- qt_data_pivot %>%
+  group_by(watershed) %>%
+  # previous snow season metrics first
+  mutate(mean_Q_Snow_lag1 = lag(mean_Q_Snow),
+         medi_Q_Snow_lag1 = lag(medi_Q_Snow),
+         max_Q_Snow_lag1 = lag(max_Q_Snow),
+         min_Q_Snow_lag1 = lag(min_Q_Snow),
+         std_Q_Snow_lag1 = lag(std_Q_Snow),
+         CV_Q_Snow_lag1 = lag(CV_Q_Snow),
+         mean_RBI_Snow_lag1 = lag(mean_RBI_Snow),
+         mean_T_Snow_lag1 = lag(mean_T_Snow),
+         medi_T_Snow_lag1 = lag(medi_T_Snow),
+         max_T_Snow_lag1 = lag(max_T_Snow),
+         min_T_Snow_lag1 = lag(min_T_Snow),
+         std_T_Snow_lag1 = lag(std_T_Snow),
+         CV_T_Snow_lag1 = lag(CV_T_Snow),
+         # then previous cooling season metrics
+         mean_Q_Cooling_lag1 = lag(mean_Q_Cooling),
+         medi_Q_Cooling_lag1 = lag(medi_Q_Cooling),
+         max_Q_Cooling_lag1 = lag(max_Q_Cooling),
+         min_Q_Cooling_lag1 = lag(min_Q_Cooling),
+         std_Q_Cooling_lag1 = lag(std_Q_Cooling),
+         CV_Q_Cooling_lag1 = lag(CV_Q_Cooling),
+         mean_RBI_Cooling_lag1 = lag(mean_RBI_Cooling),
+         mean_T_Cooling_lag1 = lag(mean_T_Cooling),
+         medi_T_Cooling_lag1 = lag(medi_T_Cooling),
+         max_T_Cooling_lag1 = lag(max_T_Cooling),
+         min_T_Cooling_lag1 = lag(min_T_Cooling),
+         std_T_Cooling_lag1 = lag(std_T_Cooling),
+         CV_T_Cooling_lag1 = lag(CV_T_Cooling),
+         # and finally previous leaf season metrics
+         mean_Q_Leaf_lag1 = lag(mean_Q_Leaf),
+         medi_Q_Leaf_lag1 = lag(medi_Q_Leaf),
+         max_Q_Leaf_lag1 = lag(max_Q_Leaf),
+         min_Q_Leaf_lag1 = lag(min_Q_Leaf),
+         std_Q_Leaf_lag1 = lag(std_Q_Leaf),
+         CV_Q_Leaf_lag1 = lag(CV_Q_Leaf),
+         mean_RBI_Leaf_lag1 = lag(mean_RBI_Leaf),
+         mean_T_Leaf_lag1 = lag(mean_T_Leaf),
+         medi_T_Leaf_lag1 = lag(medi_T_Leaf),
+         max_T_Leaf_lag1 = lag(max_T_Leaf),
+         min_T_Leaf_lag1 = lag(min_T_Leaf),
+         std_T_Leaf_lag1 = lag(std_T_Leaf),
+         CV_T_Leaf_lag1 = lag(CV_T_Leaf))
+
+# And once again trim down only to the columns of interest.
+qt_data_pivot_trim <- qt_data_pivot %>%
+  select(watershed, Year,
+         mean_Q_Leaf, medi_Q_Leaf, max_Q_Leaf, 
+         min_Q_Leaf, std_Q_Leaf, CV_Q_Leaf, 
+         mean_RBI_Leaf, mean_T_Leaf, medi_T_Leaf,
+         max_T_Leaf, min_T_Leaf, std_T_Leaf,
+         CV_T_Leaf,
+         mean_Q_Warming, medi_Q_Warming, max_Q_Warming, 
+         min_Q_Warming, std_Q_Warming, CV_Q_Warming, 
+         mean_RBI_Warming, mean_T_Warming, medi_T_Warming,
+         max_T_Warming, min_T_Warming, std_T_Warming,
+         CV_T_Warming,
+         `mean_Q_Warming to Peak`, `medi_Q_Warming to Peak`,
+         `max_Q_Warming to Peak`, `min_Q_Warming to Peak`,
+         `std_Q_Warming to Peak`, `CV_Q_Warming to Peak`, 
+         `mean_RBI_Warming to Peak`, `mean_T_Warming to Peak`,
+         `medi_T_Warming to Peak`, `max_T_Warming to Peak`,
+         `min_T_Warming to Peak`, `std_T_Warming to Peak`,
+         `CV_T_Warming to Peak`,
+         mean_Q_Snow_lag1, medi_Q_Snow_lag1, max_Q_Snow_lag1, 
+         min_Q_Snow_lag1, std_Q_Snow_lag1, CV_Q_Snow_lag1, 
+         mean_RBI_Snow_lag1, mean_T_Snow_lag1, medi_T_Snow_lag1,
+         max_T_Snow_lag1, min_T_Snow_lag1, std_T_Snow_lag1,
+         CV_T_Snow_lag1,
+         mean_Q_Cooling_lag1, medi_Q_Cooling_lag1, max_Q_Cooling_lag1, 
+         min_Q_Cooling_lag1, std_Q_Cooling_lag1, CV_Q_Cooling_lag1, 
+         mean_RBI_Cooling_lag1, mean_T_Cooling_lag1, medi_T_Cooling_lag1,
+         max_T_Cooling_lag1, min_T_Cooling_lag1, std_T_Cooling_lag1,
+         CV_T_Cooling_lag1,
+         mean_Q_Leaf_lag1, medi_Q_Leaf_lag1, max_Q_Leaf_lag1, 
+         min_Q_Leaf_lag1, std_Q_Leaf_lag1, CV_Q_Leaf_lag1, 
+         mean_RBI_Leaf_lag1, mean_T_Leaf_lag1, medi_T_Leaf_lag1,
+         max_T_Leaf_lag1, min_T_Leaf_lag1, std_T_Leaf_lag1,
+         CV_T_Leaf_lag1)
+
 #### Join ####
 
 # Join with snowmelt data.
@@ -254,6 +366,9 @@ all_var <- full_join(all_var, algal_mj)
 
 # Join with seasonal durations.
 all_var <- left_join(all_var, seasons_trim)
+
+# Join with Q and T 
+all_var <- left_join(all_var, qt_data_pivot_trim)
 
 #### Visualize ####
 
@@ -432,6 +547,95 @@ plot(all_var$mean_chla_T_leaf_lag1, all_var$annual_count) # even more negative
 #        height = 10,
 #        units = "cm")
 
+##### Q Variability #####
+
+(fig1_q_count <- ggplot(all_var, aes(x = mean_RBI_Leaf,
+                               y = annual_count)) +
+   geom_point(color = "#85ADCC", size = 3) +
+   labs(x = "RBI - Leaf Season",
+        y = "Annual Count (Individuals)") +
+   theme_bw())
+
+(fig2_q_count <- ggplot(all_var, aes(x = mean_RBI_Warming,
+                               y = annual_count)) +
+    geom_point(color = "#85ADCC", size = 3) +
+    labs(x = "RBI - Warming Season",
+         y = "Annual Count (Individuals)") +
+    theme_bw())
+
+(fig3_q_count <- ggplot(all_var, aes(x = mean_RBI_Snow_lag1,
+                               y = annual_count)) +
+    geom_point(color = "#85ADCC", size = 3) +
+    labs(x = "RBI - Previous Snow Season",
+         y = "Annual Count (Individuals)") +
+    theme_bw())
+
+(fig4_q_count <- ggplot(all_var, aes(x = mean_RBI_Cooling_lag1,
+                               y = annual_count)) +
+    geom_point(color = "#85ADCC", size = 3) +
+    labs(x = "RBI - Previous Cooling Season",
+         y = "Annual Count (Individuals)") +
+    theme_bw())
+
+(fig_q_count <- fig1_q_count +
+    fig2_q_count +
+    fig3_q_count +
+    fig4_q_count)
+
+# ggsave(plot = fig_q_count,
+#        filename = "figures/cumulative_q_061424.jpg",
+#        width = 15,
+#        height = 15,
+#        units = "cm")
+
+(fig1_q_peak <- ggplot(all_var, aes(x = mean_RBI_Warming,
+                                  y = leaf_peak_count)) +
+    geom_point(color = "#5E6B7B", size = 3) +
+    labs(x = "RBI - Warming Season",
+         y = "Peak Emergence Magnitude (individuals)") +
+    theme_bw())
+
+(fig2_q_peak <- ggplot(all_var, aes(x = `mean_RBI_Warming to Peak`,
+                                    y = leaf_peak_count)) +
+    geom_point(color = "#5E6B7B", size = 3) +
+    labs(x = "RBI - Warming Season until Peak",
+         y = "Peak Emergence Magnitude (individuals)") +
+    theme_bw())
+
+(fig_q_peak <- fig1_q_peak +
+    fig2_q_peak)
+
+# ggsave(plot = fig_q_peak,
+#        filename = "figures/peak_q_061424.jpg",
+#        width = 15,
+#        height = 8,
+#        units = "cm")
+
+(fig1_q_peak_time <- ggplot(all_var, aes(x = mean_RBI_Warming,
+                                       y = leaf_peak_jday)) +
+    geom_point(color = "#233D3F", size = 3) +
+    labs(x = "RBI - Warming Season",
+         y = "Peak Emergence DOY") +
+    theme_bw())
+
+(fig2_q_peak_time <- ggplot(all_var, aes(x = mean_RBI_Leaf,
+                                         y = later_peak_jday)) +
+    geom_point(color = "#233D3F", size = 3) +
+    labs(x = "RBI - Leaf Season",
+         y = "Later Peak Emergence DOY") +
+    theme_bw())
+
+(fig_q_peak_time <- fig1_q_peak_time +
+    fig2_q_peak_time)
+
+# ggsave(plot = fig_q_peak_time,
+#        filename = "figures/peak_time_q_061424.jpg",
+#        width = 15,
+#        height = 8,
+#        units = "cm")
+
+##### Correlations #####
+
 # And finally generate a summary correlation plot for comparison.
 
 # Select only variables of interest.
@@ -451,5 +655,70 @@ ggcorrplot(corr_var,
 
 # Appears the only one not explore above is the fall peak magnitude's
 # correlation with the previous summer's mean chl a concentration.
+
+# And creating separate correlation plots to examine Q & T metrics
+# since there are so many.
+
+# Select only variables of interest.
+q_var_trim <- all_var %>%
+  select(annual_count:later_peak_jday,
+         mean_Q_Leaf, medi_Q_Leaf, max_Q_Leaf, 
+         min_Q_Leaf, std_Q_Leaf, CV_Q_Leaf, 
+         mean_RBI_Leaf, 
+         mean_Q_Warming, medi_Q_Warming, max_Q_Warming, 
+         min_Q_Warming, std_Q_Warming, CV_Q_Warming, 
+         mean_RBI_Warming,
+         `mean_Q_Warming to Peak`, `medi_Q_Warming to Peak`,
+         `max_Q_Warming to Peak`, `min_Q_Warming to Peak`,
+         `std_Q_Warming to Peak`, `CV_Q_Warming to Peak`, 
+         `mean_RBI_Warming to Peak`,
+         mean_Q_Snow_lag1, medi_Q_Snow_lag1, max_Q_Snow_lag1, 
+         min_Q_Snow_lag1, std_Q_Snow_lag1, CV_Q_Snow_lag1, 
+         mean_RBI_Snow_lag1, 
+         mean_Q_Cooling_lag1, medi_Q_Cooling_lag1, max_Q_Cooling_lag1, 
+         min_Q_Cooling_lag1, std_Q_Cooling_lag1, CV_Q_Cooling_lag1, 
+         mean_RBI_Cooling_lag1, 
+         mean_Q_Leaf_lag1, medi_Q_Leaf_lag1, max_Q_Leaf_lag1, 
+         min_Q_Leaf_lag1, std_Q_Leaf_lag1, CV_Q_Leaf_lag1, 
+         mean_RBI_Leaf_lag1) %>%
+  # remove years for which we have no data
+  drop_na(annual_count) %>%
+  # and replace NaN values
+  mutate_all(~ifelse(is.nan(.), NA, .))
+
+# Calculate correlations.
+corr_var_q <- cor(q_var_trim, use = "complete.obs")
+
+ggcorrplot(corr_var_q,
+           type = "lower",
+           lab = TRUE)
+
+# Select only variables of interest.
+t_var_trim <- all_var %>%
+  select(annual_count:later_peak_jday,
+         mean_T_Leaf, medi_T_Leaf, max_T_Leaf, 
+         min_T_Leaf, std_T_Leaf, CV_T_Leaf, 
+         mean_T_Warming, medi_T_Warming, max_T_Warming, 
+         min_T_Warming, std_T_Warming, CV_T_Warming, 
+         `mean_T_Warming to Peak`, `medi_T_Warming to Peak`,
+         `max_T_Warming to Peak`, `min_T_Warming to Peak`,
+         `std_T_Warming to Peak`, `CV_T_Warming to Peak`, 
+         mean_T_Snow_lag1, medi_T_Snow_lag1, max_T_Snow_lag1, 
+         min_T_Snow_lag1, std_T_Snow_lag1, CV_T_Snow_lag1, 
+         mean_T_Cooling_lag1, medi_T_Cooling_lag1, max_T_Cooling_lag1, 
+         min_T_Cooling_lag1, std_T_Cooling_lag1, CV_T_Cooling_lag1, 
+         mean_T_Leaf_lag1, medi_T_Leaf_lag1, max_T_Leaf_lag1, 
+         min_T_Leaf_lag1, std_T_Leaf_lag1, CV_T_Leaf_lag1) %>%
+  # remove years for which we have no data
+  drop_na(annual_count) %>%
+  # and replace NaN values
+  mutate_all(~ifelse(is.nan(.), NA, .))
+
+# Calculate correlations.
+corr_var_t <- cor(t_var_trim, use = "complete.obs")
+
+ggcorrplot(corr_var_t,
+           type = "lower",
+           lab = TRUE)
 
 # End of script.
