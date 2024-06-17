@@ -75,7 +75,11 @@ dat_cdd <- dat_daily %>%
             cum_degree_day_2 = sum(degree_day_2)) %>%
   ungroup()
 
+# And I need to remove those years for which data is not
+# complete and the cumulative degree days should be disregarded.
+dat_cdd <- dat_cdd[-1,]
+
 # Export for use in analyses.
-# saveRDS(dat_cdd, "data_working/sum_degreedays_061724.rds")
+#saveRDS(dat_cdd, "data_working/sum_degreedays_061724.rds")
 
 # End of script.

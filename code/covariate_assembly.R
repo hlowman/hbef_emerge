@@ -42,6 +42,9 @@ ws_data <- read_csv("data_raw/HBEFdata_Current_2024-05-28.csv")
 # Edited seasonal dates based on phenology.
 season_data <-  read_csv("data_working/season_dates_pheno_wpeak_052824_trimmed.csv")
 
+# Cumulative degree days.
+ddays_data <- readRDS("data_working/sum_degreedays_061724.rds")
+
 # And flow/temperature summary metrics.
 qt_data <- read_csv("data_raw/QT_15min_EmergeSeasons_SummaryStats.csv")
 
@@ -247,6 +250,19 @@ seasons_trim <- seasons4_trim %>%
 
 ##### Q & T metrics #####
 
+# Properly format degree day dataset.
+ddays_data <- ddays_data %>%
+  mutate(watershed = case_when(Site_ID == "W1" ~ "1",
+                               Site_ID == "W2" ~ "2",
+                               Site_ID == "W3" ~ "3",
+                               Site_ID == "W4" ~ "4",
+                               Site_ID == "W5" ~ "5",
+                               Site_ID == "W6" ~ "6",
+                               Site_ID == "W9" ~ "9",
+                               Site_ID == "HBK" ~ "HBK")) %>%
+  select(watershed, Year, cum_degree_day_1,
+         cum_degree_day_2)
+
 # Keep only the metrics of interest for now.
 qt_data_trim <- qt_data %>%
   mutate(watershed = case_when(Site_ID == "W1" ~ "1",
@@ -368,6 +384,7 @@ all_var <- full_join(all_var, algal_mj)
 all_var <- left_join(all_var, seasons_trim)
 
 # Join with Q and T 
+all_var <- left_join(all_var, ddays_data)
 all_var <- left_join(all_var, qt_data_pivot_trim)
 
 #### Visualize ####
@@ -634,7 +651,31 @@ plot(all_var$mean_chla_T_leaf_lag1, all_var$annual_count) # even more negative
 #        height = 8,
 #        units = "cm")
 
-##### Correlations #####
+##### Degree Days #####
+
+(fig1_deg_peak <- ggplot(all_var, aes(x = cum_degree_day_1,
+                                       y = leaf_peak_jday)) +
+   geom_point(color = "#D95204", size = 3) +
+   labs(x = "Cumulative Degree Days (Average)",
+        y = "Peak Emergence DOY") +
+   theme_bw())
+
+(fig2_deg_peak <- ggplot(all_var, aes(x = cum_degree_day_2,
+                                       y = leaf_peak_jday)) +
+    geom_point(color = "#D95204", size = 3) +
+    labs(x = "Cumulative Degree Days (Max/Min)",
+         y = "Peak Emergence DOY") +
+    theme_bw())
+
+(fig_degpeak_all <- fig1_deg_peak + fig2_deg_peak)
+
+# ggsave(plot = fig_degpeak_all,
+#        filename = "figures/peaktime_degdays_061724.jpg",
+#        width = 15,
+#        height = 8,
+#        units = "cm")
+
+#### Correlations ####
 
 # And finally generate a summary correlation plot for comparison.
 
@@ -696,6 +737,7 @@ ggcorrplot(corr_var_q,
 # Select only variables of interest.
 t_var_trim <- all_var %>%
   select(annual_count:later_peak_jday,
+         cum_degree_day_1, cum_degree_day_2,
          mean_T_Leaf, medi_T_Leaf, max_T_Leaf, 
          min_T_Leaf, std_T_Leaf, CV_T_Leaf, 
          mean_T_Warming, medi_T_Warming, max_T_Warming, 
