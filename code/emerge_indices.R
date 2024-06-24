@@ -85,18 +85,58 @@ dat_total_weekly <- dat_long %>%
   # dropping data with missing dates for now
   drop_na(Date)
 
+# Create same dataset, but for stoneflies only.
+dat_total_weekly_sf <- dat_long %>%
+  filter(Order %in% c("stonefly")) %>%
+  group_by(watershed, Date) %>%
+  summarize(total_count = sum(count, na.rm = TRUE)) %>%
+  ungroup() %>%
+  # drop missing date for now
+  drop_na(Date)
+
+# And one for caddisflies only.
+dat_total_weekly_cf <- dat_long %>%
+  filter(Order %in% c("caddisfly")) %>%
+  group_by(watershed, Date) %>%
+  summarize(total_count = sum(count, na.rm = TRUE)) %>%
+  ungroup() %>%
+  # drop missing date for now
+  drop_na(Date)
+
 #### Warming Peak Emergence ####
 
 # Calculate peak emergence by watershed and by year (single week).
 
-# Add year column to dataset.
+# Add year column to datasets.
 dat_total_weekly$Year <- year(dat_total_weekly$Date)
+dat_total_weekly_sf$Year <- year(dat_total_weekly_sf$Date)
+dat_total_weekly_cf$Year <- year(dat_total_weekly_cf$Date)
 
 dat_peak <- dat_total_weekly %>%
   group_by(watershed, Year) %>%
   slice(which.max(total_count)) %>%
   mutate(jday = yday(Date)) %>%
   ungroup()
+
+dat_peak_sf <- dat_total_weekly_sf %>%
+  group_by(watershed, Year) %>%
+  slice(which.max(total_count)) %>%
+  mutate(jday = yday(Date)) %>%
+  ungroup()
+
+dat_peak_cf <- dat_total_weekly_cf %>%
+  group_by(watershed, Year) %>%
+  slice(which.max(total_count)) %>%
+  mutate(jday = yday(Date)) %>%
+  ungroup()
+
+# Export for use in seasonal timetable.
+# Only using peak dates for stoneflies & caddisflies 
+# since we anticipate they are univoltine.
+# saveRDS(dat_peak_sf,
+#         "data_working/peak_emerge_sf_dates_062424.rds")
+# saveRDS(dat_peak_cf,
+#         "data_working/peak_emerge_cf_dates_062424.rds")
 
 # Create peak emergence dataset specific to summer
 # peak dates.
@@ -204,6 +244,28 @@ dat_sum <- dat_total_weekly %>%
 # saveRDS(dat_sum,
 #         "data_working/sum_emerge_052824.rds")
 
+# And do the same for only the stonefly data.
+dat_sum_sf <- dat_total_weekly_sf %>%
+  group_by(watershed, Year) %>%
+  summarize(annual_count = sum(total_count, 
+                               na.rm = TRUE)) %>%
+  ungroup()
+
+# Export for use in analyses.
+# saveRDS(dat_sum_sf,
+#         "data_working/sum_emerge_sf_062424.rds")
+
+# As well as caddisfly data.
+dat_sum_cf <- dat_total_weekly_cf %>%
+  group_by(watershed, Year) %>%
+  summarize(annual_count = sum(total_count, 
+                               na.rm = TRUE)) %>%
+  ungroup()
+
+# Export for use in analyses.
+# saveRDS(dat_sum_cf,
+#         "data_working/sum_emerge_cf_062424.rds")
+
 # And reformat for easier comparison.
 # Number of individuals
 dat_sum_wide <- dat_sum %>%
@@ -284,6 +346,9 @@ dat_duration_wide <- dat_duration %>%
 #        width = 10,
 #        height = 20,
 #        units = "cm")
+
+# Did not calculate duration for stoneflies, since we
+# discussed and feel duration is an artefact of the sampling.
 
 #### Join indices ####
 
@@ -376,5 +441,109 @@ dat_indices <- full_join(dat_indices, dat_duration_wide,
 # correlated with annual total emergence).
 # There may also be a strong artefact of collection timing to the
 # duration window, which may confound findings.
+
+# And, similarly, examine stonefly data.
+dat_peak_sf <- dat_peak_sf %>%
+  rename(Date_peak = Date,
+         total_count_peak = total_count,
+         jday_peak = jday)
+
+dat_indices_sf <- full_join(dat_peak_sf, dat_sum_sf,
+                         by = c("watershed",
+                                "Year"))
+
+(fig1_ind_sf <- ggplot(dat_indices_sf, aes(x = jday_peak,
+                                     y = annual_count)) +
+    geom_point(aes(color = watershed), size = 3) +
+    scale_color_manual(values = cal_palette("figmtn")) +
+    labs(x = "Peak Emergence DOY",
+         y = "Annual Total Emergence (individuals)",
+         color = "Watershed") +
+    theme_bw() +
+    theme(legend.position = "none"))
+
+(fig2_ind_sf <- ggplot(dat_indices_sf, aes(x = total_count_peak,
+                                     y = annual_count)) +
+    geom_point(aes(color = watershed), size = 3) +
+    scale_color_manual(values = cal_palette("figmtn")) +
+    labs(x = "Peak Emergence (individuals)",
+         y = "Annual Total Emergence (individuals)",
+         color = "Watershed") +
+    theme_bw())
+
+(fig3_ind_sf <- ggplot(dat_indices_sf, aes(x = jday_peak,
+                                     y = total_count_peak)) +
+    geom_point(aes(color = watershed), size = 3) +
+    scale_color_manual(values = cal_palette("figmtn")) +
+    labs(x = "Peak Emergence DOY",
+         y = "Peak Emergence (individuals)",
+         color = "Watershed") +
+    theme_bw() +
+    theme(legend.position = "none"))
+
+# Combine into a single plot.
+fig_all_sf_indices <- fig1_ind_sf | fig3_ind_sf | fig2_ind_sf
+
+# Export figure.
+# ggsave(plot = fig_all_sf_indices,
+#        filename = "figures/emerge_indices_sf_062424.jpg",
+#        width = 30,
+#        height = 8,
+#        units = "cm")
+
+# So the tight correlation between peak and annual emergence
+# holds when only examining stoneflies.
+
+# And finally, examine caddisfly data.
+dat_peak_cf <- dat_peak_cf %>%
+  rename(Date_peak = Date,
+         total_count_peak = total_count,
+         jday_peak = jday)
+
+dat_indices_cf <- full_join(dat_peak_cf, dat_sum_cf,
+                            by = c("watershed",
+                                   "Year"))
+
+(fig1_ind_cf <- ggplot(dat_indices_cf, aes(x = jday_peak,
+                                           y = annual_count)) +
+    geom_point(aes(color = watershed), size = 3) +
+    scale_color_manual(values = cal_palette("figmtn")) +
+    labs(x = "Peak Emergence DOY",
+         y = "Annual Total Emergence (individuals)",
+         color = "Watershed") +
+    theme_bw() +
+    theme(legend.position = "none"))
+
+(fig2_ind_cf <- ggplot(dat_indices_cf, aes(x = total_count_peak,
+                                           y = annual_count)) +
+    geom_point(aes(color = watershed), size = 3) +
+    scale_color_manual(values = cal_palette("figmtn")) +
+    labs(x = "Peak Emergence (individuals)",
+         y = "Annual Total Emergence (individuals)",
+         color = "Watershed") +
+    theme_bw())
+
+(fig3_ind_cf <- ggplot(dat_indices_cf, aes(x = jday_peak,
+                                           y = total_count_peak)) +
+    geom_point(aes(color = watershed), size = 3) +
+    scale_color_manual(values = cal_palette("figmtn")) +
+    labs(x = "Peak Emergence DOY",
+         y = "Peak Emergence (individuals)",
+         color = "Watershed") +
+    theme_bw() +
+    theme(legend.position = "none"))
+
+# Combine into a single plot.
+fig_all_cf_indices <- fig1_ind_cf | fig3_ind_cf | fig2_ind_cf
+
+# Export figure.
+ggsave(plot = fig_all_cf_indices,
+       filename = "figures/emerge_indices_cf_062424.jpg",
+       width = 30,
+       height = 8,
+       units = "cm")
+
+# So the tight correlation between peak and annual emergence
+# holds when only examining caddisflies as well.
 
 # End of script.

@@ -20,17 +20,25 @@ library(ggcorrplot)
 # Load necessary datasets.
 
 # First, the response variables.
-# Date and magnitude of leaf season peak.
+# Date and magnitude of leaf season peak (all taxa).
 leaf_peak_dat <- readRDS("data_working/peak_emerge_dates_052824.rds")
 
-# Magnitude of 3 weeks (peak emergence +/-1 week).
+# And for stoneflies & caddisflies only.
+leaf_peak_dat_sf <- readRDS("data_working/peak_emerge_sf_dates_062424.rds")
+leaf_peak_dat_cf <- readRDS("data_working/peak_emerge_cf_dates_062424.rds")
+
+# Magnitude of 3 weeks (peak emergence +/-1 week for all taxa).
 leaf_peak_3wk_dat <- readRDS("data_working/peak_emerge_3wk_060424.rds")
 
-# Date and magnitude of later leaf/cooling season peak.
+# Date and magnitude of later leaf/cooling season peak (all taxa).
 later_peak_dat <- readRDS("data_working/peak_emerge_dates_cooling_052824.rds")
 
 # Cumulative annual magnitude of insect emergence.
 sum_emerge_dat <- readRDS("data_working/sum_emerge_052824.rds")
+
+# And for stoneflies and caddisflies only.
+sum_emerge_dat_sf <- readRDS("data_working/sum_emerge_sf_062424.rds")
+sum_emerge_dat_cf <- readRDS("data_working/sum_emerge_cf_062424.rds")
 
 # Next, the covariates.
 # Snowmelt data from Danielle.
@@ -56,6 +64,16 @@ leaf_peak_dat <- leaf_peak_dat %>%
   rename(leaf_peak_count = total_count,
          leaf_peak_jday = jday)
 
+leaf_peak_dat_sf <- leaf_peak_dat_sf %>%
+  select(watershed, Year, total_count, jday) %>%
+  rename(leaf_peak_sf_count = total_count,
+         leaf_peak_sf_jday = jday)
+
+leaf_peak_dat_cf <- leaf_peak_dat_cf %>%
+  select(watershed, Year, total_count, jday) %>%
+  rename(leaf_peak_cf_count = total_count,
+         leaf_peak_cf_jday = jday)
+
 leaf_peak_3wk_dat <- leaf_peak_3wk_dat %>%
   rename(leaf_peak_3wk_count = sum_total_3wk)
 
@@ -65,8 +83,19 @@ later_peak_dat <- later_peak_dat %>%
   rename(later_peak_count = total_count,
          later_peak_jday = jday)
 
+# And rename the cumulative column in the stonefly
+# and caddisfly data.
+sum_emerge_dat_sf <- sum_emerge_dat_sf %>%
+  rename(annual_count_sf = annual_count)
+sum_emerge_dat_cf <- sum_emerge_dat_cf %>%
+  rename(annual_count_cf = annual_count)
+
 # Join with cumulative emergence.
-resp_var <- full_join(sum_emerge_dat, leaf_peak_dat)
+resp_var <- full_join(sum_emerge_dat, sum_emerge_dat_sf)
+resp_var <- full_join(resp_var, sum_emerge_dat_cf)
+resp_var <- full_join(resp_var, leaf_peak_dat)
+resp_var <- full_join(resp_var, leaf_peak_dat_sf)
+resp_var <- full_join(resp_var, leaf_peak_dat_cf)
 resp_var <- full_join(resp_var, leaf_peak_3wk_dat)
 resp_var <- full_join(resp_var, later_peak_dat)
 
@@ -387,6 +416,9 @@ all_var <- left_join(all_var, seasons_trim)
 all_var <- left_join(all_var, ddays_data)
 all_var <- left_join(all_var, qt_data_pivot_trim)
 
+# Export for future use.
+# saveRDS(all_var, "data_working/resp_and_cov_062424.rds")
+
 #### Visualize ####
 
 # Examine some of the correlation plots.
@@ -677,7 +709,9 @@ plot(all_var$mean_chla_T_leaf_lag1, all_var$annual_count) # even more negative
 
 #### Correlations ####
 
-# And finally generate a summary correlation plot for comparison.
+# And finally generate summary correlation plots.
+
+##### All Taxa #####
 
 # Select only variables of interest.
 all_var_trim <- all_var %>%
@@ -762,5 +796,146 @@ corr_var_t <- cor(t_var_trim, use = "complete.obs")
 ggcorrplot(corr_var_t,
            type = "lower",
            lab = TRUE)
+
+##### Stoneflies only #####
+
+# First with flow metrics.
+
+# Select only variables of interest.
+q_var_sf_trim <- all_var %>%
+  select(annual_count_sf, leaf_peak_sf_jday,
+         leaf_peak_sf_count,
+         mean_Q_Leaf, medi_Q_Leaf, max_Q_Leaf, 
+         min_Q_Leaf, std_Q_Leaf, CV_Q_Leaf, 
+         mean_RBI_Leaf, 
+         mean_Q_Warming, medi_Q_Warming, max_Q_Warming, 
+         min_Q_Warming, std_Q_Warming, CV_Q_Warming, 
+         mean_RBI_Warming,
+         `mean_Q_Warming to Peak`, `medi_Q_Warming to Peak`,
+         `max_Q_Warming to Peak`, `min_Q_Warming to Peak`,
+         `std_Q_Warming to Peak`, `CV_Q_Warming to Peak`, 
+         `mean_RBI_Warming to Peak`,
+         mean_Q_Snow_lag1, medi_Q_Snow_lag1, max_Q_Snow_lag1, 
+         min_Q_Snow_lag1, std_Q_Snow_lag1, CV_Q_Snow_lag1, 
+         mean_RBI_Snow_lag1, 
+         mean_Q_Cooling_lag1, medi_Q_Cooling_lag1, max_Q_Cooling_lag1, 
+         min_Q_Cooling_lag1, std_Q_Cooling_lag1, CV_Q_Cooling_lag1, 
+         mean_RBI_Cooling_lag1, 
+         mean_Q_Leaf_lag1, medi_Q_Leaf_lag1, max_Q_Leaf_lag1, 
+         min_Q_Leaf_lag1, std_Q_Leaf_lag1, CV_Q_Leaf_lag1, 
+         mean_RBI_Leaf_lag1) %>%
+  # remove years for which we have no data
+  drop_na(annual_count_sf) %>%
+  # and replace NaN values
+  mutate_all(~ifelse(is.nan(.), NA, .))
+
+# Calculate correlations.
+corr_var_q_sf <- cor(q_var_sf_trim, use = "complete.obs")
+
+ggcorrplot(corr_var_q_sf,
+           type = "lower",
+           lab = TRUE)
+
+# Select only variables of interest.
+t_var_sf_trim <- all_var %>%
+  select(annual_count_sf, leaf_peak_sf_jday,
+         leaf_peak_sf_count,
+         cum_degree_day_1, cum_degree_day_2,
+         mean_T_Leaf, medi_T_Leaf, max_T_Leaf, 
+         min_T_Leaf, std_T_Leaf, CV_T_Leaf, 
+         mean_T_Warming, medi_T_Warming, max_T_Warming, 
+         min_T_Warming, std_T_Warming, CV_T_Warming, 
+         `mean_T_Warming to Peak`, `medi_T_Warming to Peak`,
+         `max_T_Warming to Peak`, `min_T_Warming to Peak`,
+         `std_T_Warming to Peak`, `CV_T_Warming to Peak`, 
+         mean_T_Snow_lag1, medi_T_Snow_lag1, max_T_Snow_lag1, 
+         min_T_Snow_lag1, std_T_Snow_lag1, CV_T_Snow_lag1, 
+         mean_T_Cooling_lag1, medi_T_Cooling_lag1, max_T_Cooling_lag1, 
+         min_T_Cooling_lag1, std_T_Cooling_lag1, CV_T_Cooling_lag1, 
+         mean_T_Leaf_lag1, medi_T_Leaf_lag1, max_T_Leaf_lag1, 
+         min_T_Leaf_lag1, std_T_Leaf_lag1, CV_T_Leaf_lag1) %>%
+  # remove years for which we have no data
+  drop_na(annual_count_sf) %>%
+  # and replace NaN values
+  mutate_all(~ifelse(is.nan(.), NA, .))
+
+# Calculate correlations.
+corr_var_t_sf <- cor(t_var_sf_trim, use = "complete.obs")
+
+ggcorrplot(corr_var_t_sf,
+           type = "lower",
+           lab = TRUE)
+
+##### Caddisflies only #####
+
+# First with flow metrics.
+
+# Select only variables of interest.
+q_var_cf_trim <- all_var %>%
+  select(annual_count_cf, leaf_peak_cf_jday,
+         leaf_peak_cf_count,
+         mean_Q_Leaf, medi_Q_Leaf, max_Q_Leaf, 
+         min_Q_Leaf, std_Q_Leaf, CV_Q_Leaf, 
+         mean_RBI_Leaf, 
+         mean_Q_Warming, medi_Q_Warming, max_Q_Warming, 
+         min_Q_Warming, std_Q_Warming, CV_Q_Warming, 
+         mean_RBI_Warming,
+         `mean_Q_Warming to Peak`, `medi_Q_Warming to Peak`,
+         `max_Q_Warming to Peak`, `min_Q_Warming to Peak`,
+         `std_Q_Warming to Peak`, `CV_Q_Warming to Peak`, 
+         `mean_RBI_Warming to Peak`,
+         mean_Q_Snow_lag1, medi_Q_Snow_lag1, max_Q_Snow_lag1, 
+         min_Q_Snow_lag1, std_Q_Snow_lag1, CV_Q_Snow_lag1, 
+         mean_RBI_Snow_lag1, 
+         mean_Q_Cooling_lag1, medi_Q_Cooling_lag1, max_Q_Cooling_lag1, 
+         min_Q_Cooling_lag1, std_Q_Cooling_lag1, CV_Q_Cooling_lag1, 
+         mean_RBI_Cooling_lag1, 
+         mean_Q_Leaf_lag1, medi_Q_Leaf_lag1, max_Q_Leaf_lag1, 
+         min_Q_Leaf_lag1, std_Q_Leaf_lag1, CV_Q_Leaf_lag1, 
+         mean_RBI_Leaf_lag1) %>%
+  # remove years for which we have no data
+  drop_na(annual_count_cf) %>%
+  # and replace NaN values
+  mutate_all(~ifelse(is.nan(.), NA, .))
+
+# Calculate correlations.
+corr_var_q_cf <- cor(q_var_cf_trim, use = "complete.obs")
+
+ggcorrplot(corr_var_q_cf,
+           type = "lower",
+           lab = TRUE)
+
+# Select only variables of interest.
+t_var_cf_trim <- all_var %>%
+  select(annual_count_cf, leaf_peak_cf_jday,
+         leaf_peak_cf_count,
+         cum_degree_day_1, cum_degree_day_2,
+         mean_T_Leaf, medi_T_Leaf, max_T_Leaf, 
+         min_T_Leaf, std_T_Leaf, CV_T_Leaf, 
+         mean_T_Warming, medi_T_Warming, max_T_Warming, 
+         min_T_Warming, std_T_Warming, CV_T_Warming, 
+         `mean_T_Warming to Peak`, `medi_T_Warming to Peak`,
+         `max_T_Warming to Peak`, `min_T_Warming to Peak`,
+         `std_T_Warming to Peak`, `CV_T_Warming to Peak`, 
+         mean_T_Snow_lag1, medi_T_Snow_lag1, max_T_Snow_lag1, 
+         min_T_Snow_lag1, std_T_Snow_lag1, CV_T_Snow_lag1, 
+         mean_T_Cooling_lag1, medi_T_Cooling_lag1, max_T_Cooling_lag1, 
+         min_T_Cooling_lag1, std_T_Cooling_lag1, CV_T_Cooling_lag1, 
+         mean_T_Leaf_lag1, medi_T_Leaf_lag1, max_T_Leaf_lag1, 
+         min_T_Leaf_lag1, std_T_Leaf_lag1, CV_T_Leaf_lag1) %>%
+  # remove years for which we have no data
+  drop_na(annual_count_cf) %>%
+  # and replace NaN values
+  mutate_all(~ifelse(is.nan(.), NA, .))
+
+# Calculate correlations.
+corr_var_t_cf <- cor(t_var_cf_trim, use = "complete.obs")
+
+ggcorrplot(corr_var_t_cf,
+           type = "lower",
+           lab = TRUE)
+
+# So, similar to the stoneflies, the discharge metrics appear much more
+# important here, and temperature much less so.
 
 # End of script.
