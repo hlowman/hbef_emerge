@@ -99,6 +99,30 @@ dat_order <- dat_long %>%
 #        height = 20,
 #        units = "cm")
 
+# Remaking this figure a bit for the HB meeting.
+
+(fig1.0 <- ggplot(dat_order, aes(x = Date, y = total_count,
+                               color = Order)) +
+    geom_line(linewidth = 1) +
+    scale_x_continuous(
+      breaks = seq.Date(as.Date("2018-01-01"), 
+                        as.Date("2023-12-31"), 
+                        by = "2 year"),
+      labels = ~ format(.x, "%Y")) +
+    labs(y = "Count") +
+    scale_color_viridis(discrete = TRUE) +
+    facet_grid(Order ~ watershed, scales = "free_y") +
+    theme_bw() +
+    theme(text = element_text(size = 25),
+          legend.position = "none"))
+
+# Export figure.
+ggsave(plot = fig1.0,
+       filename = "figures/emerge_062824.jpg",
+       width = 50,
+       height = 25,
+       units = "cm")
+
 # Ok, let's also zoom in on watershed 6 since that's the longest
 # record of all the datasets.
 dat_w6 <- dat_long %>%

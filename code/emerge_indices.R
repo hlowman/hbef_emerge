@@ -72,7 +72,12 @@ dat_long <- dat_long %>%
                                     "caddisfly_small",
                                     "mayfly_small",
                                     "stonefly_small",
-                                    "other_small") ~ "small"))
+                                    "other_small") ~ "small")) %>%
+  # And finally remove 2021 from W1 record since it is not complete
+  mutate(Year = year(Date)) %>%
+  mutate(Keep = case_when(watershed == 1 & Year == 2021 ~ "NO",
+                          TRUE ~ "YES")) %>%
+  filter(Keep == "YES")
 
 # And create a dataset of total weekly emergence,
 # including ONLY aquatic taxa.
@@ -134,9 +139,9 @@ dat_peak_cf <- dat_total_weekly_cf %>%
 # Only using peak dates for stoneflies & caddisflies 
 # since we anticipate they are univoltine.
 # saveRDS(dat_peak_sf,
-#         "data_working/peak_emerge_sf_dates_062424.rds")
+#         "data_working/peak_emerge_sf_dates_062824.rds")
 # saveRDS(dat_peak_cf,
-#         "data_working/peak_emerge_cf_dates_062424.rds")
+#         "data_working/peak_emerge_cf_dates_062824.rds")
 
 # Create peak emergence dataset specific to summer
 # peak dates.
@@ -150,7 +155,7 @@ dat_peak_summer <- dat_total_weekly %>%
 
 # Export for use in seasonal timetable.
 # saveRDS(dat_peak_summer,
-#         "data_working/peak_emerge_dates_052824.rds")
+#         "data_working/peak_emerge_dates_062824.rds")
 
 # Also, going to create peak emergence with a week on either side.
 # Select columns of interest from peak dataset.
@@ -175,7 +180,7 @@ dat_peak_3wk <- left_join(dat_total_weekly, dat_peak_trim) %>%
 
 # Export for use in seasonal timetable.
 # saveRDS(dat_peak_3wk,
-#         "data_working/peak_emerge_3wk_060424.rds")
+#         "data_working/peak_emerge_3wk_062824.rds")
   
 # Create peak emergence dataset specific to fall
 # peak dates.
@@ -189,7 +194,7 @@ dat_peak_fall <- dat_total_weekly %>%
 
 # Export for use in seasonal timetable.
 # saveRDS(dat_peak_fall,
-#         "data_working/peak_emerge_dates_cooling_052824.rds")
+#         "data_working/peak_emerge_dates_cooling_062824.rds")
 
 # And reformat for easier comparison.
 # Number of individuals
@@ -242,7 +247,7 @@ dat_sum <- dat_total_weekly %>%
 
 # Export for use in analyses.
 # saveRDS(dat_sum,
-#         "data_working/sum_emerge_052824.rds")
+#         "data_working/sum_emerge_062824.rds")
 
 # And do the same for only the stonefly data.
 dat_sum_sf <- dat_total_weekly_sf %>%
@@ -253,7 +258,7 @@ dat_sum_sf <- dat_total_weekly_sf %>%
 
 # Export for use in analyses.
 # saveRDS(dat_sum_sf,
-#         "data_working/sum_emerge_sf_062424.rds")
+#         "data_working/sum_emerge_sf_062824.rds")
 
 # As well as caddisfly data.
 dat_sum_cf <- dat_total_weekly_cf %>%
@@ -264,7 +269,7 @@ dat_sum_cf <- dat_total_weekly_cf %>%
 
 # Export for use in analyses.
 # saveRDS(dat_sum_cf,
-#         "data_working/sum_emerge_cf_062424.rds")
+#         "data_working/sum_emerge_cf_062824.rds")
 
 # And reformat for easier comparison.
 # Number of individuals
