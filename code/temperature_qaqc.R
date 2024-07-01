@@ -15,8 +15,8 @@ library(tidyverse)
 library(lubridate)
 
 # Load data.
-temp_dat_w3 <- read_csv("data_raw/HBEF_W9_UNHWQAL_WaterTemp.csv")
-temp_dat_w9 <- read_csv("data_raw/HBEF_W3_UNHWQAL_WaterTemp.csv")
+temp_dat_w3 <- read_csv("data_raw/HBEF_W3_UNHWQAL_WaterTemp.csv")
+temp_dat_w9 <- read_csv("data_raw/HBEF_W9_UNHWQAL_WaterTemp.csv")
 
 # And load seasonal dates.
 seas_dates <- read_csv("data_working/season_dates_pheno_wpeak_052824_trimmed.csv")
@@ -32,10 +32,8 @@ ggplot(temp_dat_w3, aes(x = date, y = TempC)) +
   geom_point() +
   theme_bw()
 
-# Appear to be missing some spring data in 2019, otherwise goes from
-# July 2018 through October 2021. But no major outliers, so going to
-# wait on the QAQC until I've had a chance to speak with Danielle and
-# copy her protocol.
+# Appear to have a complete record for the time period I'm interested
+# in, and it spans (overall) May 2013 through November 2021.
 
 temp_dat_w9 <- temp_dat_w9 %>%
   mutate(date = mdy_hm(Date))
@@ -44,8 +42,10 @@ ggplot(temp_dat_w9, aes(x = date, y = TempC)) +
   geom_point() +
   theme_bw()
 
-# Appear to have a complete record for the time period I'm interested
-# in, and it spans (overall) May 2013 through November 2021.
+# Appear to be missing some spring data in 2019, otherwise goes from
+# July 2018 through October 2021. But no major outliers, so going to
+# wait on the QAQC until I've had a chance to speak with Danielle and
+# copy her protocol.
 
 #### Aggregate ####
 
@@ -54,13 +54,26 @@ ggplot(temp_dat_w9, aes(x = date, y = TempC)) +
 seas_dates_w3 <- seas_dates %>%
   filter(Site_ID == "W3")
 
-# And need to trim down to seasons/years for which data is complete.
-seas_dates_w3 <- seas_dates_w3[11:17,]
-
 # Now, to add columns for aggregation to the original dataset.
 temp_dat_w3 <- temp_dat_w3 %>%
   mutate(Year = year(date)) %>%
-  mutate(season_yr = case_when(date >= ymd("2019-05-06") &
+  mutate(season_yr = case_when(date >= ymd("2017-05-04") &
+                                 date < ymd("2017-10-11") ~ "Leaf17",
+                               date >= ymd("2017-10-11") &
+                                 date < ymd("2017-12-11") ~ "Cooling17",
+                               date >= ymd("2017-12-11") &
+                                 date < ymd("2018-02-16") ~ "Snow17",
+                               date >= ymd("2018-02-16") &
+                                 date < ymd("2018-04-26") ~ "Warming18",
+                               date >= ymd("2018-04-26") &
+                                 date < ymd("2018-10-25") ~ "Leaf18",
+                               date >= ymd("2018-10-25") &
+                                 date < ymd("2018-11-19") ~ "Cooling18",
+                               date >= ymd("2018-11-19") &
+                                 date < ymd("2019-03-19") ~ "Snow18",
+                               date >= ymd("2019-03-19") &
+                                 date < ymd("2019-05-06") ~ "Warming18",
+                            date >= ymd("2019-05-06") &
                               date < ymd("2019-11-04") ~ "Leaf19",
                             date >= ymd("2019-11-04") &
                               date < ymd("2019-12-03") ~ "Cooling19",
@@ -85,9 +98,13 @@ temp_agg_w3 <- temp_dat_w3 %>%
             CV_T = (sd(TempC, na.rm = TRUE))/(mean(TempC, na.rm = TRUE))) %>%
   ungroup()
 
-# also need to add the single warming to peak season.
+# also need to add the warming to peak seasons.
 temp_dat_w3_wtp <- temp_dat_w3 %>%
-  mutate(wtp = case_when(date >= ymd("2020-03-03") &
+  mutate(wtp = case_when(date >= ymd("2018-02-16") &
+                           date < ymd("2018-05-29") ~ "WarmingToPeak18",
+                         date >= ymd("2019-03-19") &
+                           date < ymd("2019-06-10") ~ "WarmingToPeak19",
+                         date >= ymd("2020-03-03") &
                            date < ymd("2020-05-26") ~ "WarmingToPeak20",
                          TRUE ~ NA))
 
@@ -114,26 +131,17 @@ seas_dates_w9 <- seas_dates %>%
   filter(Site_ID == "W9")
 
 # Now, to add columns for aggregation to the original dataset.
+# Removing seasons for which data is unavailable.
 temp_dat_w9 <- temp_dat_w9 %>%
   mutate(Year = year(date)) %>%
-  mutate(season_yr = case_when(date >= ymd("2017-05-04") &
-                                 date < ymd("2017-10-11") ~ "Leaf17",
-                               date >= ymd("2017-10-11") &
-                                 date < ymd("2017-12-11") ~ "Cooling17",
-                               date >= ymd("2017-12-11") &
-                                 date < ymd("2018-03-03") ~ "Snow17",
-                               date >= ymd("2018-03-03") &
-                                 date < ymd("2018-04-26") ~ "Warming18",
-                               date >= ymd("2018-04-26") &
-                                 date < ymd("2018-10-25") ~ "Leaf18",
-                               date >= ymd("2018-10-25") &
+  mutate(season_yr = case_when(date >= ymd("2018-10-25") &
                                  date < ymd("2018-11-19") ~ "Cooling18",
                                date >= ymd("2018-11-19") &
                                  date < ymd("2019-02-10") ~ "Snow18",
-                               date >= ymd("2019-02-10") &
-                                 date < ymd("2019-05-06") ~ "Warming19",
-                               date >= ymd("2019-05-06") &
-                                 date < ymd("2019-11-04") ~ "Leaf19",
+                               # date >= ymd("2019-02-10") &
+                               #   date < ymd("2019-05-06") ~ "Warming19",
+                               # date >= ymd("2019-05-06") &
+                               #   date < ymd("2019-11-04") ~ "Leaf19",
                                date >= ymd("2019-11-04") &
                                  date < ymd("2019-12-03") ~ "Cooling19",
                                date >= ymd("2019-12-03") &
@@ -159,11 +167,7 @@ temp_agg_w9 <- temp_dat_w9 %>%
 
 # also need to add the warming to peak seasons.
 temp_dat_w9_wtp <- temp_dat_w9 %>%
-  mutate(wtp = case_when(date >= ymd("2018-03-03") &
-                           date < ymd("2018-06-18") ~ "WarmingToPeak18",
-                         date >= ymd("2019-02-10") &
-                           date < ymd("2019-06-24") ~ "WarmingToPeak19",
-                         date >= ymd("2020-03-08") &
+  mutate(wtp = case_when(date >= ymd("2020-03-08") &
                            date < ymd("2020-06-22") ~ "WarmingToPeak20",
                          TRUE ~ NA))
 
@@ -206,6 +210,6 @@ temp_agg_both <- temp_agg_both %>%
   select(Site_ID, Year, Season, mean_T, medi_T, min_T, max_T, std_T, CV_T)
 
 # Export.
-saveRDS(temp_agg_both, "data_working/Temp_HBEF_SummaryStats_070124.rds")
+# saveRDS(temp_agg_both, "data_working/Temp_HBEF_SummaryStats_070124.rds")
 
 # End of script.
