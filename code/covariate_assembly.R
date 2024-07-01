@@ -50,11 +50,11 @@ ws_data <- read_csv("data_raw/HBEFdata_Current_2024-05-28.csv")
 # Edited seasonal dates based on phenology.
 season_data <-  read_csv("data_working/season_dates_pheno_wpeak_052824_trimmed.csv")
 
-# Cumulative degree days.
-ddays_data <- readRDS("data_working/sum_degreedays_061724.rds")
+# Cumulative degree days & rate of change.
+ddays_data <- readRDS("data_working/sum_degreedays_070124.rds")
 
-# And flow/temperature summary metrics.
-qt_data <- read_csv("data_raw/QT_15min_EmergeSeasons_SummaryStats.csv")
+# And flow/temperature summary metrics, including 2yr and 10yr flood recurrences.
+qt_data <- read_csv("data_raw/QT_15min_EmergeSeasons_SummaryStats_v2.csv")
 
 #### Tidy Emergence Indices ####
 
@@ -290,7 +290,7 @@ ddays_data <- ddays_data %>%
                                Site_ID == "W9" ~ "9",
                                Site_ID == "HBK" ~ "HBK")) %>%
   select(watershed, Year, cum_degree_day_1,
-         cum_degree_day_2)
+         cum_degree_day_2, delta_temp)
 
 # Keep only the metrics of interest for now.
 qt_data_trim <- qt_data %>%
@@ -306,11 +306,12 @@ qt_data_trim <- qt_data %>%
          mean_Q, medi_Q, max_Q, min_Q,
          std_Q, CV_Q, mean_RBI,
          mean_T, medi_T, max_T, min_T,
-         std_T, CV_T)
+         std_T, CV_T, Exceed_2y_perc,
+         Exceed_10y_perc)
 
 # Must pivot to accommodate annual-level site data.
 qt_data_pivot <- qt_data_trim %>%
-  pivot_wider(values_from = mean_Q:CV_T, names_from = Season)
+  pivot_wider(values_from = mean_Q:Exceed_10y_perc, names_from = Season)
 
 # Similar to seasonal durations considered above, we are
 # most interested in
@@ -334,6 +335,8 @@ qt_data_pivot <- qt_data_pivot %>%
          min_T_Snow_lag1 = lag(min_T_Snow),
          std_T_Snow_lag1 = lag(std_T_Snow),
          CV_T_Snow_lag1 = lag(CV_T_Snow),
+         Exceed_2y_perc_Snow_lag1 = lag(Exceed_2y_perc_Snow),
+         Exceed_10y_perc_Snow_lag1 = lag(Exceed_10y_perc_Snow),
          # then previous cooling season metrics
          mean_Q_Cooling_lag1 = lag(mean_Q_Cooling),
          medi_Q_Cooling_lag1 = lag(medi_Q_Cooling),
@@ -348,6 +351,8 @@ qt_data_pivot <- qt_data_pivot %>%
          min_T_Cooling_lag1 = lag(min_T_Cooling),
          std_T_Cooling_lag1 = lag(std_T_Cooling),
          CV_T_Cooling_lag1 = lag(CV_T_Cooling),
+         Exceed_2y_perc_Cooling_lag1 = lag(Exceed_2y_perc_Cooling),
+         Exceed_10y_perc_Cooling_lag1 = lag(Exceed_10y_perc_Cooling),
          # and finally previous leaf season metrics
          mean_Q_Leaf_lag1 = lag(mean_Q_Leaf),
          medi_Q_Leaf_lag1 = lag(medi_Q_Leaf),
@@ -361,7 +366,9 @@ qt_data_pivot <- qt_data_pivot %>%
          max_T_Leaf_lag1 = lag(max_T_Leaf),
          min_T_Leaf_lag1 = lag(min_T_Leaf),
          std_T_Leaf_lag1 = lag(std_T_Leaf),
-         CV_T_Leaf_lag1 = lag(CV_T_Leaf))
+         CV_T_Leaf_lag1 = lag(CV_T_Leaf),
+         Exceed_2y_perc_Leaf_lag1 = lag(Exceed_2y_perc_Leaf),
+         Exceed_10y_perc_Leaf_lag1 = lag(Exceed_10y_perc_Leaf))
 
 # And once again trim down only to the columns of interest.
 qt_data_pivot_trim <- qt_data_pivot %>%
@@ -370,34 +377,35 @@ qt_data_pivot_trim <- qt_data_pivot %>%
          min_Q_Leaf, std_Q_Leaf, CV_Q_Leaf, 
          mean_RBI_Leaf, mean_T_Leaf, medi_T_Leaf,
          max_T_Leaf, min_T_Leaf, std_T_Leaf,
-         CV_T_Leaf,
+         CV_T_Leaf, Exceed_2y_perc_Leaf, Exceed_10y_perc_Leaf,
          mean_Q_Warming, medi_Q_Warming, max_Q_Warming, 
          min_Q_Warming, std_Q_Warming, CV_Q_Warming, 
          mean_RBI_Warming, mean_T_Warming, medi_T_Warming,
          max_T_Warming, min_T_Warming, std_T_Warming,
-         CV_T_Warming,
+         CV_T_Warming, Exceed_2y_perc_Warming, Exceed_10y_perc_Warming,
          `mean_Q_Warming to Peak`, `medi_Q_Warming to Peak`,
          `max_Q_Warming to Peak`, `min_Q_Warming to Peak`,
          `std_Q_Warming to Peak`, `CV_Q_Warming to Peak`, 
          `mean_RBI_Warming to Peak`, `mean_T_Warming to Peak`,
          `medi_T_Warming to Peak`, `max_T_Warming to Peak`,
          `min_T_Warming to Peak`, `std_T_Warming to Peak`,
-         `CV_T_Warming to Peak`,
+         `CV_T_Warming to Peak`, `Exceed_2y_perc_Warming to Peak`,
+         `Exceed_10y_perc_Warming to Peak`,
          mean_Q_Snow_lag1, medi_Q_Snow_lag1, max_Q_Snow_lag1, 
          min_Q_Snow_lag1, std_Q_Snow_lag1, CV_Q_Snow_lag1, 
          mean_RBI_Snow_lag1, mean_T_Snow_lag1, medi_T_Snow_lag1,
          max_T_Snow_lag1, min_T_Snow_lag1, std_T_Snow_lag1,
-         CV_T_Snow_lag1,
+         CV_T_Snow_lag1, Exceed_2y_perc_Snow_lag1, Exceed_10y_perc_Snow_lag1,
          mean_Q_Cooling_lag1, medi_Q_Cooling_lag1, max_Q_Cooling_lag1, 
          min_Q_Cooling_lag1, std_Q_Cooling_lag1, CV_Q_Cooling_lag1, 
          mean_RBI_Cooling_lag1, mean_T_Cooling_lag1, medi_T_Cooling_lag1,
          max_T_Cooling_lag1, min_T_Cooling_lag1, std_T_Cooling_lag1,
-         CV_T_Cooling_lag1,
+         CV_T_Cooling_lag1, Exceed_2y_perc_Cooling_lag1, Exceed_10y_perc_Cooling_lag1,
          mean_Q_Leaf_lag1, medi_Q_Leaf_lag1, max_Q_Leaf_lag1, 
          min_Q_Leaf_lag1, std_Q_Leaf_lag1, CV_Q_Leaf_lag1, 
          mean_RBI_Leaf_lag1, mean_T_Leaf_lag1, medi_T_Leaf_lag1,
          max_T_Leaf_lag1, min_T_Leaf_lag1, std_T_Leaf_lag1,
-         CV_T_Leaf_lag1)
+         CV_T_Leaf_lag1, Exceed_2y_perc_Leaf_lag1, Exceed_10y_perc_Leaf_lag1)
 
 #### Join ####
 
@@ -417,7 +425,7 @@ all_var <- left_join(all_var, ddays_data)
 all_var <- left_join(all_var, qt_data_pivot_trim)
 
 # Export for future use.
-# saveRDS(all_var, "data_working/resp_and_cov_062424.rds")
+# saveRDS(all_var, "data_working/resp_and_cov_070124.rds")
 
 #### Visualize ####
 
@@ -429,6 +437,7 @@ plot(all_var$melt_duration_days, all_var$leaf_peak_count) # no trend
 plot(all_var$melt_duration_days, all_var$leaf_peak_jday) # no trend
 plot(all_var$mean_chla_T_leaf, all_var$annual_count) # neg correlated
 plot(all_var$mean_chla_T_leaf_lag1, all_var$annual_count) # even more negative
+plot(all_var$delta_temp, all_var$leaf_peak_jday) # no trend
 
 # And create more official plots of the above.
 
@@ -739,23 +748,25 @@ q_var_trim <- all_var %>%
   select(annual_count:later_peak_jday,
          mean_Q_Leaf, medi_Q_Leaf, max_Q_Leaf, 
          min_Q_Leaf, std_Q_Leaf, CV_Q_Leaf, 
-         mean_RBI_Leaf, 
+         mean_RBI_Leaf, Exceed_2y_perc_Leaf, Exceed_10y_perc_Leaf,
          mean_Q_Warming, medi_Q_Warming, max_Q_Warming, 
          min_Q_Warming, std_Q_Warming, CV_Q_Warming, 
-         mean_RBI_Warming,
+         mean_RBI_Warming, Exceed_2y_perc_Warming, Exceed_10y_perc_Warming,
          `mean_Q_Warming to Peak`, `medi_Q_Warming to Peak`,
          `max_Q_Warming to Peak`, `min_Q_Warming to Peak`,
          `std_Q_Warming to Peak`, `CV_Q_Warming to Peak`, 
-         `mean_RBI_Warming to Peak`,
+         `mean_RBI_Warming to Peak`, `Exceed_2y_perc_Warming to Peak`,
+         `Exceed_10y_perc_Warming to Peak`,
          mean_Q_Snow_lag1, medi_Q_Snow_lag1, max_Q_Snow_lag1, 
          min_Q_Snow_lag1, std_Q_Snow_lag1, CV_Q_Snow_lag1, 
-         mean_RBI_Snow_lag1, 
+         mean_RBI_Snow_lag1, Exceed_2y_perc_Snow_lag1, Exceed_10y_perc_Snow_lag1,
          mean_Q_Cooling_lag1, medi_Q_Cooling_lag1, max_Q_Cooling_lag1, 
          min_Q_Cooling_lag1, std_Q_Cooling_lag1, CV_Q_Cooling_lag1, 
-         mean_RBI_Cooling_lag1, 
+         mean_RBI_Cooling_lag1, Exceed_2y_perc_Cooling_lag1,
+         Exceed_10y_perc_Cooling_lag1,
          mean_Q_Leaf_lag1, medi_Q_Leaf_lag1, max_Q_Leaf_lag1, 
          min_Q_Leaf_lag1, std_Q_Leaf_lag1, CV_Q_Leaf_lag1, 
-         mean_RBI_Leaf_lag1) %>%
+         mean_RBI_Leaf_lag1, Exceed_2y_perc_Leaf_lag1, Exceed_10y_perc_Leaf_lag1) %>%
   # remove years for which we have no data
   drop_na(annual_count) %>%
   # and replace NaN values
@@ -771,7 +782,7 @@ ggcorrplot(corr_var_q,
 # Select only variables of interest.
 t_var_trim <- all_var %>%
   select(annual_count:later_peak_jday,
-         cum_degree_day_1, cum_degree_day_2,
+         cum_degree_day_1, cum_degree_day_2, delta_temp,
          mean_T_Leaf, medi_T_Leaf, max_T_Leaf, 
          min_T_Leaf, std_T_Leaf, CV_T_Leaf, 
          mean_T_Warming, medi_T_Warming, max_T_Warming, 
@@ -794,6 +805,27 @@ t_var_trim <- all_var %>%
 corr_var_t <- cor(t_var_trim, use = "complete.obs")
 
 ggcorrplot(corr_var_t,
+           type = "lower",
+           lab = TRUE)
+
+# And trim down to a more intelligible plot including only
+# those covariates of significance (>= 0.6).
+
+t_var_trimtrim <- all_var %>%
+  select(annual_count:later_peak_jday,
+         cum_degree_day_1, cum_degree_day_2,
+         min_T_Leaf, std_T_Leaf, CV_T_Leaf, 
+         min_T_Snow_lag1, 
+         medi_T_Cooling_lag1, min_T_Cooling_lag1, CV_T_Cooling_lag1) %>%
+  # remove years for which we have no data
+  drop_na(annual_count) %>%
+  # and replace NaN values
+  mutate_all(~ifelse(is.nan(.), NA, .))
+
+# Calculate correlations.
+corr_var_tt <- cor(t_var_trimtrim, use = "complete.obs")
+
+ggcorrplot(corr_var_tt,
            type = "lower",
            lab = TRUE)
 

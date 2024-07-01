@@ -23,6 +23,8 @@ library(patchwork)
 dat <- read_csv("data_raw/HBEF_DailyStreamflow_1956-2023.csv")
 # Streamflow is in mm/day.
 
+floods <- read_csv("data_raw/calc_siteFloodRecurranceInterval.csv")
+
 #### Tidy ####
 
 # Format date column.
@@ -136,5 +138,18 @@ dat_lowflow_only <- dat_lowflow_days %>%
   facet_grid(WS~.))
 
 # Ahhh this is a bit of a mess.
+
+# Plotting 2yr and 10yr floods in each watershed.
+floods_pivot <- floods %>%
+  pivot_longer(FRI_2y:FRI_10y) %>%
+  mutate(name_f = factor(name, levels = c("FRI_2y", "FRI_10y")))
+
+(flood_fig <- ggplot(floods_pivot, aes(x = name_f, y = value, color = Site_ID)) +
+  geom_jitter(size = 3, width = 0.25) +
+  scale_y_log10() +
+  scale_color_viridis(discrete = TRUE) +
+  labs(x = "Flood Recurrence Interval (FRI)",
+       y = "Discharge (cfs)") +
+  theme_bw())
 
 # End of script.
