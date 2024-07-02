@@ -112,7 +112,7 @@ datw9_daily <- datw9 %>%
   ungroup() %>%
   mutate_all(~ifelse(is.nan(.), NA, .)) %>%
   mutate(date = make_date(Y, M, D)) %>%
-  mutate(Site_ID = "W3") %>%
+  mutate(Site_ID = "W9") %>%
   mutate(Year = Y) %>%
   select(Site_ID, Year, date, mean_tempC_sw, min_tempC_sw, max_tempC_sw)
 
@@ -174,9 +174,9 @@ datw9_cdd <- datw9_daily %>%
 
 # Join with data above.
 dat_cdd_all <- rbind(dat_cdd, datw3_cdd)
-dat_cdd_all <- rbind(dat_cdd, datw9_cdd)
+dat_cdd_all <- rbind(dat_cdd_all, datw9_cdd)
 
 # Export for use in analyses.
-# saveRDS(dat_cdd_all, "data_working/sum_degreedays_070124.rds")
+# saveRDS(dat_cdd_all, "data_working/sum_degreedays_070224.rds")
 
 # End of script.
