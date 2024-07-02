@@ -181,7 +181,9 @@ dat_peak_3wk <- left_join(dat_total_weekly, dat_peak_trim) %>%
 # Export for use in seasonal timetable.
 # saveRDS(dat_peak_3wk,
 #         "data_working/peak_emerge_3wk_062824.rds")
-  
+
+#### Cooling Peak Emergence ####
+
 # Create peak emergence dataset specific to fall
 # peak dates.
 dat_peak_fall <- dat_total_weekly %>%
