@@ -23,6 +23,7 @@ library(webshot2)
 
 # Load data.
 dat <- read_csv("data_raw/sticky_trap_counts_051724.csv")
+stream_dat <- read_csv("data_raw/HBEFdata_Current_2024-03-21.csv")
 
 #### Tidy ####
 
@@ -213,8 +214,8 @@ dat_peak_no <- dat_peak %>%
     title = md("Peak Emergence (individuals)")))
 
 # Export table.
-gtsave(data = table1,
-       filename = "figures/peak_emerge_table_040824.png")
+# gtsave(data = table1,
+#        filename = "figures/peak_emerge_table_040824.png")
 
 # Date of peak
 dat_peak_date <- dat_peak %>%
@@ -234,8 +235,8 @@ dat_peak_date <- dat_peak %>%
       title = md("Date of Peak Emergence")))
 
 # Export table.
-gtsave(data = table2,
-       filename = "figures/peak_date_table_040824.png")
+# gtsave(data = table2,
+#        filename = "figures/peak_date_table_040824.png")
 
 #### Total Emergence ####
 
@@ -288,8 +289,8 @@ dat_sum_wide <- dat_sum %>%
       title = md("Total Emergence (individuals)")))
 
 # Export table.
-gtsave(data = table3,
-       filename = "figures/annual_emerge_table_040824.png")
+# gtsave(data = table3,
+#        filename = "figures/annual_emerge_table_040824.png")
 
 #### Duration ####
 
@@ -356,6 +357,92 @@ dat_duration_wide <- dat_duration %>%
 
 # Did not calculate duration for stoneflies, since we
 # discussed and feel duration is an artefact of the sampling.
+
+#### Temperature on Peaks ####
+
+# Trim down original temperature dataset.
+stream_temps <- stream_dat %>%
+  filter(site %in% c("W1", "W2", "W3", "W4", "W5",
+                     "W6", "W9", "HBK")) %>%
+  mutate(Date = mdy(date)) %>%
+  mutate(watershed = case_when(site == "W1" ~ "1",
+                               site == "W2" ~ "2",
+                               site == "W3" ~ "3",
+                               site == "W4" ~ "4",
+                               site == "W5" ~ "5",
+                               site == "W6" ~ "6",
+                               site == "W9" ~ "9",
+                               site == "HBK" ~ "HBK")) %>%
+  select(watershed, Date, temp)
+
+# And join with all peak datasets created above.
+dat_peak_summer <- left_join(dat_peak_summer, stream_temps, 
+                      by = c("watershed", "Date")) %>%
+  rename(temp_peak_warming = temp)
+
+dat_peak_fall <- left_join(dat_peak_fall, stream_temps, 
+                             by = c("watershed", "Date")) %>%
+  rename(temp_peak_cooling = temp)
+
+dat_peak_cf <- left_join(dat_peak_cf, stream_temps, 
+                      by = c("watershed", "Date")) %>%
+  rename(temp_peak_cf = temp)
+
+dat_peak_sf <- left_join(dat_peak_sf, stream_temps, 
+                         by = c("watershed", "Date")) %>%
+  rename(temp_peak_sf = temp)
+
+# Quick plots of temperatures of emergence.
+(fig_temp1 <- ggplot(dat_peak_summer, aes(x = watershed,
+                                          y = temp_peak_warming,
+                                          fill = watershed)) +
+    geom_boxplot(alpha = 0.8) +
+    geom_jitter(alpha = 0.8) +
+    labs(x = "Watershed", y = "Peak Warming Emergence Temperature (C)") +
+    scale_fill_viridis(discrete = TRUE, option = "magma") +
+    theme_bw() +
+    theme(legend.position = "none"))
+
+(fig_temp2 <- ggplot(dat_peak_fall, aes(x = watershed,
+                                          y = temp_peak_cooling,
+                                          fill = watershed)) +
+    geom_boxplot(alpha = 0.8) +
+    geom_jitter(alpha = 0.8) +
+    labs(x = "Watershed", y = "Peak Cooling Emergence Temperature (C)") +
+    scale_fill_viridis(discrete = TRUE, option = "magma") +
+    theme_bw() +
+    theme(legend.position = "none"))
+
+(fig_temp3 <- ggplot(dat_peak_cf, aes(x = watershed,
+                                        y = temp_peak_cf,
+                                        fill = watershed)) +
+    geom_boxplot(alpha = 0.8) +
+    geom_jitter(alpha = 0.8) +
+    labs(x = "Watershed", y = "Peak Caddisfly Emergence Temperature (C)") +
+    scale_fill_viridis(discrete = TRUE, option = "magma") +
+    theme_bw() +
+    theme(legend.position = "none"))
+
+(fig_temp4 <- ggplot(dat_peak_sf, aes(x = watershed,
+                                      y = temp_peak_sf,
+                                      fill = watershed)) +
+    geom_boxplot(alpha = 0.8) +
+    geom_jitter(alpha = 0.8) +
+    labs(x = "Watershed", y = "Peak Stonefly Emergence Temperature (C)") +
+    scale_fill_viridis(discrete = TRUE, option = "magma") +
+    theme_bw() +
+    theme(legend.position = "none"))
+
+# Combine into a single plot.
+(fig_all_temps <- (fig_temp1 | fig_temp2) /
+    (fig_temp3 | fig_temp4))
+
+# Export figure.
+# ggsave(plot = fig_all_temps,
+#        filename = "figures/emerge_temperatures_071624.jpg",
+#        width = 30,
+#        height = 25,
+#        units = "cm")
 
 #### Join indices ####
 

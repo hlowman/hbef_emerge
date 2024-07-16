@@ -123,6 +123,43 @@ ggsave(plot = fig1.0,
        height = 25,
        units = "cm")
 
+# And zooming in on w6 in this same figure.
+(fig1.1 <- ggplot(dat_order %>%
+                    filter(watershed == 6) %>%
+                    filter(Order %in% c("dipteran",
+                                        "mayfly",
+                                        "stonefly",
+                                        "caddisfly")) %>%
+                    mutate(order = factor(case_when(Order == "dipteran" ~ "black fly",
+                                             TRUE ~ Order),
+                                          levels = c("black fly",
+                                                     "stonefly",
+                                                     "caddisfly",
+                                                     "mayfly"))) %>%
+                    mutate(Year = year(Date)), 
+                  aes(x = Date, y = total_count,
+                                 color = Order,
+                      group = Year)) +
+    geom_line(linewidth = 1.5, alpha = 0.8) +
+    scale_x_continuous(
+      breaks = seq.Date(as.Date("2018-01-01"), 
+                        as.Date("2023-12-31"), 
+                        by = "2 year"),
+      labels = ~ format(.x, "%Y")) +
+    labs(y = "Count") +
+    scale_color_viridis(discrete = TRUE) +
+    facet_grid(order ~ ., scales = "free_y") +
+    theme_bw() +
+    theme(text = element_text(size = 25),
+          legend.position = "none"))
+
+# Export figure.
+ggsave(plot = fig1.1,
+       filename = "figures/emergeW6_070924.jpg",
+       width = 40,
+       height = 20,
+       units = "cm")
+
 # Ok, let's also zoom in on watershed 6 since that's the longest
 # record of all the datasets.
 dat_w6 <- dat_long %>%

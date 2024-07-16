@@ -480,6 +480,12 @@ all_var <- left_join(all_var, qt_data_pivot_trim)
 #### Visualize ####
 
 # Note, these have been revised following the data QAQC above.
+all_var <- readRDS("data_working/resp_and_cov_070224.rds")
+# Also load in watershed sizes for normalization
+size <- read_csv("data_raw/ws_sizes.csv")
+
+# Join size with full dataset.
+all_var <- full_join(all_var, size, by = c("watershed" = "Watershed"))
 
 # Examine some of the correlation plots.
 plot(all_var$annual_count_lag1, all_var$annual_count) # no trend
@@ -796,6 +802,30 @@ plot(all_var$delta_temp, all_var$leaf_peak_jday) # no trend
          y = "Cumulative Annual Caddisfly Emergence (Individuals)",
          fill = "Watershed") +
     theme_bw())
+
+(fig3a_present <- ggplot(all_var, aes(x = mean_Q_Warming,
+                                     y = annual_count_cf/Area_ha,
+                                     fill = factor(watershed))) +
+    geom_point(size = 4, shape = 21) +
+    scale_x_log10() +
+    scale_fill_viridis(discrete = TRUE, option = "magma") +
+    labs(x = "Warming Season Mean Discharge (cfs) / Watershed Size (ha)",
+         y = "Cumulative Annual Caddisfly Emergence (Individuals)",
+         fill = "Watershed") +
+    theme_bw())
+
+(fig3b_present <- ggplot(all_var, aes(x = mean_Q_Warming,
+                                      y = annual_count_sf/Area_ha,
+                                      fill = factor(watershed))) +
+    geom_point(size = 4, shape = 21) +
+    scale_x_log10() +
+    scale_fill_viridis(discrete = TRUE, option = "magma") +
+    labs(x = "Warming Season Mean Discharge (cfs) / Watershed Size (ha)",
+         y = "Cumulative Annual Stonefly Emergence (Individuals)",
+         fill = "Watershed") +
+    theme_bw())
+
+fig3a_present + fig3b_present
 
 (fig4_present <- ggplot(all_var, aes(x = mean_Q_Cooling_lag1,
                                      y = annual_count,
