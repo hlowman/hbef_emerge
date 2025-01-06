@@ -494,4 +494,58 @@ fig10 + plot_annotation(caption = 'Aquatic insect emergence, streamwater tempera
 #        height = 20,
 #        units = "cm")
 
+#### NSF proposal plot ####
+
+# Editing the 4 paneled W6 figure above for NSF proposal
+
+(fig_nsfa <- ggplot(dat_inv %>%
+                   filter(watershed == 6) %>%
+                   filter(year > 2018) %>%
+                   filter(year < 2023), 
+                   aes(x = Date, y = total_count)) +
+    geom_point(color = "#6B6D9F", alpha = 0.8) +
+    xlim(as.Date("2019-01-01"), 
+         as.Date("2022-12-31")) +
+    labs(y = " ",
+         title = "Weekly emergence (individuals)") +
+    theme_bw() +
+    theme(axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank()))
+
+(fig_nsfb <- ggplot(dat_w6 %>%
+                    filter(Date >= as.Date("2019-01-01")) %>%
+                    filter(Date <= as.Date("2022-12-31")), 
+                    aes(x = Date, y = gageHt)) +
+    geom_line(color = "#8197A4") +
+    xlim(as.Date("2019-01-01"), 
+         as.Date("2022-12-31")) +
+    labs(y = " ",
+         title = "Flow (gauge height)") +
+    theme_bw() +
+    theme(axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank()))
+
+(fig_nsfc <- ggplot(dat_w6 %>%
+                    filter(Date >= as.Date("2019-01-01")) %>%
+                    filter(Date <= as.Date("2022-12-31")), 
+                    aes(x = Date, y = chla_T)) +
+    geom_line(color = "#609048") +
+    xlim(as.Date("2019-01-01"), 
+         as.Date("2022-12-31")) +
+    labs(y = " ",
+         x = "Date",
+         title = "Algal biomass in faux bryospheres (chlorophyll a)") +
+    theme_bw())
+
+(fig_nsf <- fig_nsfa / fig_nsfb / fig_nsfc)
+
+# Export figure.
+ggsave(plot = fig_nsf,
+       filename = "figures/emerge_gageht_chla_W6_010625.jpg",
+       width = 15,
+       height = 12,
+       units = "cm")
+
 # End of script.
