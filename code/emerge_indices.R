@@ -20,96 +20,38 @@ library(calecopal)
 library(viridis)
 library(gt)
 library(webshot2)
+library(patchwork)
 
 # Load data.
-dat <- read_csv("data_raw/sticky_trap_counts_051724.csv")
-stream_dat <- read_csv("data_raw/HBEFdata_Current_2024-03-21.csv")
+dat <- readRDS("data_working/aquatic_counts_long_051325.rds")
+stream_dat <- read_csv("data_raw/HBEFdata_Current_2025-05-13.csv")
+
+# Hex values for later use
+"#3900B3", "#5524BD", "#7148C8", "#8D6DD3", "#AA91DE", "#C6B6E9"
 
 #### Tidy ####
 
-# First, need to correct an incorrect date.
-dat[1393, 4] <- "2020-08-03"
-
-# And quickly check the data structure.
-str(dat)
-
-# Next, need to pivot to make into long format.
-dat_long <- dat %>%
-  pivot_longer(cols = dipteran_large:other_small,
-               names_to = "id",
-               values_to = "count")
-
-# Also need to add additional columns to plot more easily.
-dat_long <- dat_long %>%
-  # create formatted date column
-  mutate(Date = ymd(date)) %>%
-  # create separate order column
-  mutate(Order = factor(case_when(id %in% c("dipteran_large",
-                                            "dipteran_small") ~ "dipteran",
-                                  id %in% c("terrestrial_large",
-                                            "terrestrial_small") ~ "terrestrial",
-                                  id %in% c("caddisfly_large",
-                                            "caddisfly_small") ~ "caddisfly",
-                                  # note, there aren't any mayfly_small currently
-                                  id %in% c("mayfly_large",
-                                            "mayfly_small") ~ "mayfly",
-                                  # also no stonefly_small currently
-                                  id %in% c("stonefly_large",
-                                            "stonefly_small") ~ "stonefly",
-                                  id %in% c("other_large",
-                                            "other_small") ~ "other"),
-                        levels = c("dipteran", "mayfly", 
-                                   "stonefly", "caddisfly",
-                                   "terrestrial", "other"))) %>%
-  # create separate size column
-  mutate(Size = case_when(id %in% c("dipteran_large",
-                                    "terrestrial_large",
-                                    "caddisfly_large",
-                                    "mayfly_large",
-                                    "stonefly_large",
-                                    "other_large") ~ "large",
-                          id %in% c("dipteran_small",
-                                    "terrestrial_small",
-                                    "caddisfly_small",
-                                    "mayfly_small",
-                                    "stonefly_small",
-                                    "other_small") ~ "small")) %>%
-  # And finally remove 2021 from W1 record since it is not complete
-  mutate(Year = year(Date)) %>%
-  mutate(Keep = case_when(watershed == 1 & Year == 2021 ~ "NO",
-                          TRUE ~ "YES")) %>%
-  filter(Keep == "YES")
-
-# And create a dataset of total weekly emergence,
-# including ONLY aquatic taxa.
-dat_total_weekly <- dat_long %>%
-  filter(Order %in% c("caddisfly", "dipteran",
-                      "mayfly", "stonefly")) %>%
+# Create a dataset of total weekly emergence for all aquatic taxa.
+dat_total_weekly <- dat %>%
   group_by(watershed, Date) %>%
   summarize(total_count = sum(count, na.rm = TRUE)) %>%
-  ungroup() %>%
-  # dropping data with missing dates for now
-  drop_na(Date)
+  ungroup()
 
 # Create same dataset, but for stoneflies only.
-dat_total_weekly_sf <- dat_long %>%
+dat_total_weekly_sf <- dat %>%
   filter(Order %in% c("stonefly")) %>%
   group_by(watershed, Date) %>%
   summarize(total_count = sum(count, na.rm = TRUE)) %>%
-  ungroup() %>%
-  # drop missing date for now
-  drop_na(Date)
+  ungroup()
 
 # And one for caddisflies only.
-dat_total_weekly_cf <- dat_long %>%
+dat_total_weekly_cf <- dat %>%
   filter(Order %in% c("caddisfly")) %>%
   group_by(watershed, Date) %>%
   summarize(total_count = sum(count, na.rm = TRUE)) %>%
-  ungroup() %>%
-  # drop missing date for now
-  drop_na(Date)
+  ungroup()
 
-#### Warming Peak Emergence ####
+#### Peak Emergence ####
 
 # Calculate peak emergence by watershed and by year (single week).
 
@@ -140,9 +82,11 @@ dat_peak_cf <- dat_total_weekly_cf %>%
 # Only using peak dates for stoneflies & caddisflies 
 # since we anticipate they are univoltine.
 # saveRDS(dat_peak_sf,
-#         "data_working/peak_emerge_sf_dates_062824.rds")
+#         "data_working/peak_emerge_sf_dates_051325.rds")
 # saveRDS(dat_peak_cf,
-#         "data_working/peak_emerge_cf_dates_062824.rds")
+#         "data_working/peak_emerge_cf_dates_051325.rds")
+
+##### Warming #####
 
 # Create peak emergence dataset specific to summer
 # peak dates.
@@ -156,7 +100,7 @@ dat_peak_summer <- dat_total_weekly %>%
 
 # Export for use in seasonal timetable.
 # saveRDS(dat_peak_summer,
-#         "data_working/peak_emerge_dates_062824.rds")
+#         "data_working/warm_peak_emerge_dates_051325.rds")
 
 # Also, going to create peak emergence with a week on either side.
 # Select columns of interest from peak dataset.
@@ -181,9 +125,9 @@ dat_peak_3wk <- left_join(dat_total_weekly, dat_peak_trim) %>%
 
 # Export for use in seasonal timetable.
 # saveRDS(dat_peak_3wk,
-#         "data_working/peak_emerge_3wk_062824.rds")
+#         "data_working/warm_peak_emerge_3wk_051325.rds")
 
-#### Cooling Peak Emergence ####
+##### Cooling #####
 
 # Create peak emergence dataset specific to fall
 # peak dates.
@@ -197,9 +141,10 @@ dat_peak_fall <- dat_total_weekly %>%
 
 # Export for use in seasonal timetable.
 # saveRDS(dat_peak_fall,
-#         "data_working/peak_emerge_dates_cooling_062824.rds")
+#         "data_working/cool_peak_emerge_dates_051325.rds")
 
-# And reformat for easier comparison.
+##### Table #####
+
 # Number of individuals
 dat_peak_no <- dat_peak %>%
   select(watershed, Year, total_count) %>%
@@ -215,7 +160,7 @@ dat_peak_no <- dat_peak %>%
 
 # Export table.
 # gtsave(data = table1,
-#        filename = "figures/peak_emerge_table_040824.png")
+#        filename = "figures/peak_emerge_table_051325.png")
 
 # Date of peak
 dat_peak_date <- dat_peak %>%
@@ -236,7 +181,27 @@ dat_peak_date <- dat_peak %>%
 
 # Export table.
 # gtsave(data = table2,
-#        filename = "figures/peak_date_table_040824.png")
+#        filename = "figures/peak_date_table_051325.png")
+
+##### Plot #####
+
+# Create figure to display variance in peaks across years and watersheds.
+(fig1 <- ggplot(dat_peak,
+               aes(x = jday,
+                   y = watershed,
+                   fill = factor(Year))) +
+   geom_point(size = 6, shape = 21, alpha = 0.75) +
+   scale_fill_manual(values = c("black", "#3900B3", "#7148C8", 
+                                "#8D6DD3", "#AA91DE", "white")) +
+   xlim(100, 325) +
+   labs(y = "Watershed",
+        x = "Day of Year",
+        fill = "Year",
+        title = "Peak Emergence") +
+   theme_bw() +
+   theme(text = element_text(size = 16),
+         plot.title = element_text(hjust = 0.5),
+         legend.position = "none"))
 
 #### Total Emergence ####
 
@@ -250,7 +215,7 @@ dat_sum <- dat_total_weekly %>%
 
 # Export for use in analyses.
 # saveRDS(dat_sum,
-#         "data_working/sum_emerge_062824.rds")
+#         "data_working/sum_emerge_051325.rds")
 
 # And do the same for only the stonefly data.
 dat_sum_sf <- dat_total_weekly_sf %>%
@@ -261,7 +226,7 @@ dat_sum_sf <- dat_total_weekly_sf %>%
 
 # Export for use in analyses.
 # saveRDS(dat_sum_sf,
-#         "data_working/sum_emerge_sf_062824.rds")
+#         "data_working/sum_emerge_sf_051325.rds")
 
 # As well as caddisfly data.
 dat_sum_cf <- dat_total_weekly_cf %>%
@@ -272,27 +237,9 @@ dat_sum_cf <- dat_total_weekly_cf %>%
 
 # Export for use in analyses.
 # saveRDS(dat_sum_cf,
-#         "data_working/sum_emerge_cf_062824.rds")
+#         "data_working/sum_emerge_cf_051325.rds")
 
-# And reformat for easier comparison.
-# Number of individuals
-dat_sum_wide <- dat_sum %>%
-  pivot_wider(names_from = watershed, 
-              values_from = annual_count)
-
-(table3 <- dat_sum_wide %>%
-    gt(rowname_col = "Year",
-       groupname_col = NA) %>%
-    tab_spanner(label = "Watershed", 
-                columns = `1`:`HBK`) %>%
-    tab_header(
-      title = md("Total Emergence (individuals)")))
-
-# Export table.
-# gtsave(data = table3,
-#        filename = "figures/annual_emerge_table_040824.png")
-
-#### Duration ####
+#### Percentiles ####
 
 # Add running (cumulative) total to data.
 dat_total_weekly <- dat_total_weekly %>%
@@ -312,7 +259,7 @@ dat_max <- dat_total_weekly %>%
 dat_total_weekly <- left_join(dat_total_weekly, dat_max) %>%
   mutate(percentile = running_total/sum_total)
 
-# And finally calculate the 5th and 95th percentiles to
+# And finally calculate the 5th, 50th, and 95th percentiles to
 # estimate emergence duration.
 dat_duration <- dat_total_weekly %>%
   # create new julian day column
@@ -320,9 +267,11 @@ dat_duration <- dat_total_weekly %>%
   # creates a new column that assigns each observation to a group
   mutate(perc_group = factor(case_when(percentile < 0.05 ~ "<0.05",
                                        percentile >= 0.05 & 
-                                         percentile < 0.95 ~ "0.05",
+                                         percentile < 0.5 ~ "0.05",
+                                       percentile >= 0.5 & 
+                                         percentile < 0.95 ~ "0.5",
                                        percentile >= 0.95 ~ "0.95"),
-                             levels = c("<0.05", "0.05", "0.95"))) %>%
+                             levels = c("<0.05", "0.05", "0.5", "0.95"))) %>%
   # and now I want to pull out the first instance in each group
   group_by(watershed, Year, perc_group) %>%
   slice(which.min(jday)) %>%
@@ -332,11 +281,12 @@ dat_duration <- dat_total_weekly %>%
 dat_duration_wide <- dat_duration %>%
   select(watershed, Year, perc_group, jday) %>%
   pivot_wider(names_from = perc_group, values_from = jday) %>%
-  select(watershed, Year, `0.05`, `0.95`) %>%
+  select(watershed, Year, `0.05`, `0.5`, `0.95`) %>%
   mutate(year = factor(Year)) %>%
   mutate(duration = `0.95` - `0.05`)
 
-# Plot.
+##### Plot #####
+
 (fig_duration <- ggplot(dat_duration_wide,
                         aes(y = year)) +
     geom_linerange(aes(xmin = `0.05`, xmax = `0.95`)) +
@@ -350,13 +300,36 @@ dat_duration_wide <- dat_duration %>%
 
 # Export figure.
 # ggsave(plot = fig_duration,
-#        filename = "figures/duration_emerge_041124.jpg",
+#        filename = "figures/duration_emerge_051325.jpg",
 #        width = 10,
 #        height = 20,
 #        units = "cm")
 
-# Did not calculate duration for stoneflies, since we
-# discussed and feel duration is an artefact of the sampling.
+# Create figure to display variance in medians across years and watersheds.
+(fig2 <- ggplot(dat_duration_wide,
+                aes(x = `0.5`,
+                    y = watershed,
+                    fill = factor(Year))) +
+    geom_point(size = 6, shape = 21, alpha = 0.75) +
+    scale_fill_manual(values = c("black", "#3900B3", "#7148C8", 
+                                 "#8D6DD3", "#AA91DE", "white")) +
+    xlim(100, 325) +
+    labs(y = "Watershed",
+         x = "Day of Year",
+         fill = "Year",
+         title = "50% Emergence") +
+    theme_bw() +
+    theme(text = element_text(size = 16),
+          plot.title = element_text(hjust = 0.5)))
+
+(fig_1_plus_2 <- fig1 + fig2 +
+    plot_annotation(tag_levels = "a"))
+
+# ggsave(plot = fig_1_plus_2,
+#        filename = "figures/peak_median_emerge_051325.jpg",
+#        width = 40,
+#        height = 17,
+#        units = "cm")
 
 #### Temperature on Peaks ####
 
