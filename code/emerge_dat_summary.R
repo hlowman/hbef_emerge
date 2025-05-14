@@ -97,7 +97,7 @@ dat_long_trim <- dat_long %>%
   filter(keep == "Y")
 
 # Export data file for use in future scripts.
-saveRDS(dat_long_trim, "data_working/aquatic_counts_long_051325.rds")
+# saveRDS(dat_long_trim, "data_working/aquatic_counts_long_051325.rds")
 
 #### Plot ####
 
@@ -166,6 +166,34 @@ dat_order_aq <- dat_order %>%
 # Export figure.
 # ggsave(plot = fig2,
 #        filename = "figures/emerge_aq_051324.jpg",
+#        width = 40,
+#        height = 17,
+#        units = "cm")
+
+(fig2_w6 <- ggplot(dat_order_aq %>%
+                     filter(watershed == 6), 
+                   aes(x = Date, y = total_count,
+                       color = Order, group = year)) +
+    geom_line(linewidth = 0.75) +
+    scale_x_continuous(
+      breaks = seq.Date(as.Date("2018-01-01"), 
+                        as.Date("2024-12-31"), 
+                        by = "2 year"),
+      labels = ~ format(.x, "%Y")) +
+    labs(y = "Count") +
+    scale_color_manual(values = c("#3900b3ff", "#714dbfff", "#9e6b90ff", "#cf9270ff")) +
+    facet_grid(Order ~ ., scales = "free_y",
+               labeller = labeller(Order = c('dipteran'="Diptera",
+                                             'mayfly'="Ephemeroptera",
+                                             'stonefly'="Plecoptera", 
+                                             'caddisfly'="Tricoptera"))) +
+    theme_bw() +
+    theme(text = element_text(size = 16),
+          legend.position = "none"))
+
+# Export figure.
+# ggsave(plot = fig2_w6,
+#        filename = "figures/emerge_aq_w6_051424.jpg",
 #        width = 40,
 #        height = 17,
 #        units = "cm")
