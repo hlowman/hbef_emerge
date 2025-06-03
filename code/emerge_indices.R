@@ -81,6 +81,8 @@ dat_peak_cf <- dat_total_weekly_cf %>%
 # Export for use in seasonal timetable.
 # Only using peak dates for stoneflies & caddisflies 
 # since we anticipate they are univoltine.
+# saveRDS(dat_peak,
+#         "data_working/peak_emerge_dates_060325.rds")
 # saveRDS(dat_peak_sf,
 #         "data_working/peak_emerge_sf_dates_051325.rds")
 # saveRDS(dat_peak_cf,

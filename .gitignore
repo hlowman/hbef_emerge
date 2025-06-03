@@ -50,3 +50,6 @@ rsconnect/
 
 # Raw data folder
 data_raw/
+
+# Files from Danielle
+from_danielle/
