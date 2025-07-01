@@ -97,8 +97,12 @@ dat_long_trim <- dat_long %>%
   # and impose filter
   filter(keep == "Y")
 
+# And make a dataset with only aquatic taxa.
+dat_long_aq <- dat_long_trim %>%
+  filter(Order %in% c("dipteran", "caddisfly", "stonefly", "mayfly"))
+
 # Export data file for use in future scripts.
-# saveRDS(dat_long_trim, "data_working/aquatic_counts_long_070125.rds")
+# saveRDS(dat_long_aq, "data_working/aquatic_counts_long_070125.rds")
 
 #### Plot ####
 
