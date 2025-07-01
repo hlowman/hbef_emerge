@@ -738,4 +738,11 @@ dat_indices_cf <- dat_indices_cf %>%
 # So the tight correlation between peak and annual emergence
 # holds when only examining caddisflies as well.
 
+#### Export ####
+
+# Finally, export the main indices data to use in other scripts.
+# saveRDS(dat_indices, "data_working/emerge_indices_all_070125.rds")
+# saveRDS(dat_indices_cf, "data_working/emerge_indices_cf_070125.rds")
+# saveRDS(dat_indices_sf, "data_working/emerge_indices_sf_070125.rds")
+
 # End of script.
