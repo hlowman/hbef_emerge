@@ -5,10 +5,7 @@
 #### README ####
 
 # The following script will calculate emergence indices using
-# the HBEF aquatic insect emergence data.
-
-# Data was downloaded from https://hbwater.org/restricted_QAQC/
-# on May 17, 2024.
+# the tidied HBEF aquatic insect emergence data.
 
 #### Setup ####
 
@@ -23,7 +20,7 @@ library(webshot2)
 library(patchwork)
 
 # Load data.
-dat <- readRDS("data_working/aquatic_counts_long_051325.rds")
+dat <- readRDS("data_working/aquatic_counts_long_070125.rds")
 stream_dat <- read_csv("data_raw/HBEFdata_Current_2025-05-13.csv")
 
 # Hex values for later use
@@ -33,6 +30,13 @@ stream_dat <- read_csv("data_raw/HBEFdata_Current_2025-05-13.csv")
 
 # Create a dataset of total weekly emergence for all aquatic taxa.
 dat_total_weekly <- dat %>%
+  group_by(watershed, Date) %>%
+  summarize(total_count = sum(count, na.rm = TRUE)) %>%
+  ungroup()
+
+# Create same dataset, but for black flies only.
+dat_total_weekly_dip <- dat %>%
+  filter(Order %in% c("dipteran")) %>%
   group_by(watershed, Date) %>%
   summarize(total_count = sum(count, na.rm = TRUE)) %>%
   ungroup()
@@ -57,10 +61,17 @@ dat_total_weekly_cf <- dat %>%
 
 # Add year column to datasets.
 dat_total_weekly$Year <- year(dat_total_weekly$Date)
+dat_total_weekly_dip$Year <- year(dat_total_weekly$Date)
 dat_total_weekly_sf$Year <- year(dat_total_weekly_sf$Date)
 dat_total_weekly_cf$Year <- year(dat_total_weekly_cf$Date)
 
 dat_peak <- dat_total_weekly %>%
+  group_by(watershed, Year) %>%
+  slice(which.max(total_count)) %>%
+  mutate(jday = yday(Date)) %>%
+  ungroup()
+
+dat_peak_dip <- dat_total_weekly_dip %>%
   group_by(watershed, Year) %>%
   slice(which.max(total_count)) %>%
   mutate(jday = yday(Date)) %>%
@@ -82,11 +93,13 @@ dat_peak_cf <- dat_total_weekly_cf %>%
 # Only using peak dates for stoneflies & caddisflies 
 # since we anticipate they are univoltine.
 # saveRDS(dat_peak,
-#         "data_working/peak_emerge_dates_060325.rds")
+#         "data_working/peak_emerge_dates_070125.rds")
+# saveRDS(dat_peak_dip,
+#         "data_working/peak_emerge_dip_dates_070125.rds")
 # saveRDS(dat_peak_sf,
-#         "data_working/peak_emerge_sf_dates_051325.rds")
+#         "data_working/peak_emerge_sf_dates_070125.rds")
 # saveRDS(dat_peak_cf,
-#         "data_working/peak_emerge_cf_dates_051325.rds")
+#         "data_working/peak_emerge_cf_dates_070125.rds")
 
 ##### Warming #####
 
@@ -102,7 +115,7 @@ dat_peak_summer <- dat_total_weekly %>%
 
 # Export for use in seasonal timetable.
 # saveRDS(dat_peak_summer,
-#         "data_working/warm_peak_emerge_dates_051325.rds")
+#         "data_working/warm_peak_emerge_dates_070125.rds")
 
 # Also, going to create peak emergence with a week on either side.
 # Select columns of interest from peak dataset.
@@ -127,7 +140,7 @@ dat_peak_3wk <- left_join(dat_total_weekly, dat_peak_trim) %>%
 
 # Export for use in seasonal timetable.
 # saveRDS(dat_peak_3wk,
-#         "data_working/warm_peak_emerge_3wk_051325.rds")
+#         "data_working/warm_peak_emerge_3wk_070125.rds")
 
 ##### Cooling #####
 
@@ -143,7 +156,7 @@ dat_peak_fall <- dat_total_weekly %>%
 
 # Export for use in seasonal timetable.
 # saveRDS(dat_peak_fall,
-#         "data_working/cool_peak_emerge_dates_051325.rds")
+#         "data_working/cool_peak_emerge_dates_070125.rds")
 
 ##### Table #####
 
@@ -162,7 +175,7 @@ dat_peak_no <- dat_peak %>%
 
 # Export table.
 # gtsave(data = table1,
-#        filename = "figures/peak_emerge_table_051325.png")
+#        filename = "figures/peak_emerge_table_070125.png")
 
 # Date of peak
 dat_peak_date <- dat_peak %>%
@@ -183,7 +196,7 @@ dat_peak_date <- dat_peak %>%
 
 # Export table.
 # gtsave(data = table2,
-#        filename = "figures/peak_date_table_051325.png")
+#        filename = "figures/peak_date_table_070125.png")
 
 ##### Plot #####
 
@@ -193,15 +206,16 @@ dat_peak_date <- dat_peak %>%
                    y = watershed,
                    fill = factor(Year))) +
    geom_point(size = 6, shape = 21, alpha = 0.75) +
-   scale_fill_manual(values = c("black", "#3900B3", "#7148C8", 
-                                "#8D6DD3", "#AA91DE", "white")) +
+   scale_fill_manual(values = c("white", "#C6B6E9",
+                               "#AA91DE","#8D6DD3", "#7148C8",
+                               "#5524BD","#3900B3")) +
    xlim(100, 325) +
    labs(y = "Watershed",
         x = "Day of Year",
         fill = "Year",
-        title = "Peak Emergence") +
+        title = "Peak") +
    theme_bw() +
-   theme(text = element_text(size = 16),
+   theme(text = element_text(size = 14),
          plot.title = element_text(hjust = 0.5),
          legend.position = "none"))
 
@@ -217,7 +231,7 @@ dat_sum <- dat_total_weekly %>%
 
 # Export for use in analyses.
 # saveRDS(dat_sum,
-#         "data_working/sum_emerge_051325.rds")
+#         "data_working/sum_emerge_070125.rds")
 
 # And do the same for only the stonefly data.
 dat_sum_sf <- dat_total_weekly_sf %>%
@@ -228,7 +242,7 @@ dat_sum_sf <- dat_total_weekly_sf %>%
 
 # Export for use in analyses.
 # saveRDS(dat_sum_sf,
-#         "data_working/sum_emerge_sf_051325.rds")
+#         "data_working/sum_emerge_sf_070125.rds")
 
 # As well as caddisfly data.
 dat_sum_cf <- dat_total_weekly_cf %>%
@@ -239,7 +253,7 @@ dat_sum_cf <- dat_total_weekly_cf %>%
 
 # Export for use in analyses.
 # saveRDS(dat_sum_cf,
-#         "data_working/sum_emerge_cf_051325.rds")
+#         "data_working/sum_emerge_cf_070125.rds")
 
 #### Percentiles ####
 
@@ -302,35 +316,73 @@ dat_duration_wide <- dat_duration %>%
 
 # Export figure.
 # ggsave(plot = fig_duration,
-#        filename = "figures/duration_emerge_051325.jpg",
+#        filename = "figures/duration_emerge_070125.jpg",
 #        width = 10,
 #        height = 20,
 #        units = "cm")
 
 # Create figure to display variance in medians across years and watersheds.
-(fig2 <- ggplot(dat_duration_wide,
+(fig2a <- ggplot(dat_duration_wide,
                 aes(x = `0.5`,
                     y = watershed,
                     fill = factor(Year))) +
     geom_point(size = 6, shape = 21, alpha = 0.75) +
-    scale_fill_manual(values = c("black", "#3900B3", "#7148C8", 
-                                 "#8D6DD3", "#AA91DE", "white")) +
+    scale_fill_manual(values = c("white", "#C6B6E9",
+                                 "#AA91DE","#8D6DD3", "#7148C8",
+                                 "#5524BD","#3900B3")) +
     xlim(100, 325) +
     labs(y = "Watershed",
          x = "Day of Year",
          fill = "Year",
-         title = "50% Emergence") +
+         title = "50%") +
     theme_bw() +
-    theme(text = element_text(size = 16),
+    theme(text = element_text(size = 14),
+          plot.title = element_text(hjust = 0.5),
+          legend.position = "none"))
+
+(fig2b <- ggplot(dat_duration_wide,
+                 aes(x = `0.05`,
+                     y = watershed,
+                     fill = factor(Year))) +
+    geom_point(size = 6, shape = 21, alpha = 0.75) +
+    scale_fill_manual(values = c("white", "#C6B6E9",
+                                 "#AA91DE","#8D6DD3", "#7148C8",
+                                 "#5524BD","#3900B3")) +
+    xlim(100, 325) +
+    labs(y = "Watershed",
+         x = "Day of Year",
+         fill = "Year",
+         title = "5%") +
+    theme_bw() +
+    theme(text = element_text(size = 14),
+          plot.title = element_text(hjust = 0.5),
+          legend.position = "none"))
+
+(fig2c <- ggplot(dat_duration_wide,
+                 aes(x = `0.95`,
+                     y = watershed,
+                     fill = factor(Year))) +
+    geom_point(size = 6, shape = 21, alpha = 0.75) +
+    scale_fill_manual(values = c("white", "#C6B6E9",
+                                 "#AA91DE","#8D6DD3", "#7148C8",
+                                 "#5524BD","#3900B3")) +
+    xlim(100, 325) +
+    labs(y = "Watershed",
+         x = "Day of Year",
+         fill = "Year",
+         title = "95%") +
+    theme_bw() +
+    theme(text = element_text(size = 14),
           plot.title = element_text(hjust = 0.5)))
 
-(fig_1_plus_2 <- fig1 + fig2 +
-    plot_annotation(tag_levels = "a"))
+(fig_1_plus_2 <- fig1 + fig2b + fig2a + fig2c +
+    plot_annotation(tag_levels = "a") +
+    plot_layout(ncol = 4))
 
 # ggsave(plot = fig_1_plus_2,
-#        filename = "figures/peak_median_emerge_051325.jpg",
+#        filename = "figures/peak_percentiles_emerge_070125.jpg",
 #        width = 40,
-#        height = 17,
+#        height = 10,
 #        units = "cm")
 
 #### Temperature on Peaks ####
@@ -339,7 +391,7 @@ dat_duration_wide <- dat_duration %>%
 stream_temps <- stream_dat %>%
   filter(site %in% c("W1", "W2", "W3", "W4", "W5",
                      "W6", "W9", "HBK")) %>%
-  mutate(Date = mdy(date)) %>%
+  mutate(Date = ymd(date)) %>%
   mutate(watershed = case_when(site == "W1" ~ "1",
                                site == "W2" ~ "2",
                                site == "W3" ~ "3",
@@ -414,7 +466,7 @@ dat_peak_sf <- left_join(dat_peak_sf, stream_temps,
 
 # Export figure.
 # ggsave(plot = fig_all_temps,
-#        filename = "figures/emerge_temperatures_071624.jpg",
+#        filename = "figures/emerge_temperatures_070125.jpg",
 #        width = 30,
 #        height = 25,
 #        units = "cm")
@@ -500,7 +552,7 @@ dat_indices <- full_join(dat_indices, dat_duration_wide,
 
 # Export figure.
 # ggsave(plot = fig_all_indices,
-#        filename = "figures/emerge_indices_050224.jpg",
+#        filename = "figures/emerge_indices_070125.jpg",
 #        width = 30,
 #        height = 15,
 #        units = "cm")
@@ -511,6 +563,47 @@ dat_indices <- full_join(dat_indices, dat_duration_wide,
 # There may also be a strong artefact of collection timing to the
 # duration window, which may confound findings.
 
+# Making a revised figure for manuscript drafting to demonstrate the
+# relationship between peak and total emergence.
+(fig_ind_peak_total <- ggplot(dat_indices, 
+                              aes(x = total_count_peak,
+                                  y = annual_count)) +
+    geom_point(aes(fill = watershed), size = 6, shape = 21, alpha = 0.75) +
+    scale_fill_manual(values = c("white", "#C0D7B5", "#AFC5A4", "#9BAF90", 
+                                  "#829375", "#626F52", "#475035", "#3B422D")) +
+    labs(x = "Peak Emergence",
+         y = "Annual Total Emergence",
+         fill = "Watershed") +
+    theme_bw() +
+    theme(legend.position = "none"))
+
+# And adding another index to the dataset to identify last year's production.
+dat_indices <- dat_indices %>%
+  group_by(watershed) %>%
+  mutate(previous_annual_count = lag(annual_count)) %>%
+  ungroup()
+
+# And another figure to demonstrate the year-over-year relationship in emergence.
+(fig_ind_lags <- ggplot(dat_indices, 
+                              aes(x = previous_annual_count,
+                                  y = annual_count)) +
+    geom_point(aes(fill = watershed), size = 6, shape = 21, alpha = 0.75) +
+    scale_fill_manual(values = c("white", "#C0D7B5", "#AFC5A4", "#9BAF90", 
+                                 "#829375", "#626F52", "#475035", "#3B422D")) +
+    labs(x = "Previous Year's Total Emergence",
+         y = "Annual Total Emergence",
+         fill = "Watershed") +
+    theme_bw())
+
+(fig_indices <- fig_ind_peak_total + fig_ind_lags +
+    plot_annotation(tag_levels = "a"))
+
+# ggsave(plot = fig_indices,
+#        filename = "figures/emerge_indices_2_070125.jpg",
+#        width = 20,
+#        height = 8,
+#        units = "cm")
+
 # And, similarly, examine stonefly data.
 dat_peak_sf <- dat_peak_sf %>%
   rename(Date_peak = Date,
@@ -520,6 +613,11 @@ dat_peak_sf <- dat_peak_sf %>%
 dat_indices_sf <- full_join(dat_peak_sf, dat_sum_sf,
                          by = c("watershed",
                                 "Year"))
+
+dat_indices_sf <- dat_indices_sf %>%
+  group_by(watershed) %>%
+  mutate(previous_annual_count = lag(annual_count)) %>%
+  ungroup()
 
 (fig1_ind_sf <- ggplot(dat_indices_sf, aes(x = jday_peak,
                                      y = annual_count)) +
@@ -538,7 +636,8 @@ dat_indices_sf <- full_join(dat_peak_sf, dat_sum_sf,
     labs(x = "Peak Emergence (individuals)",
          y = "Annual Total Emergence (individuals)",
          color = "Watershed") +
-    theme_bw())
+    theme_bw() +
+    theme(legend.position = "none"))
 
 (fig3_ind_sf <- ggplot(dat_indices_sf, aes(x = jday_peak,
                                      y = total_count_peak)) +
@@ -550,14 +649,23 @@ dat_indices_sf <- full_join(dat_peak_sf, dat_sum_sf,
     theme_bw() +
     theme(legend.position = "none"))
 
+(fig4_ind_sf <- ggplot(dat_indices_sf, aes(x = previous_annual_count,
+                                           y = annual_count)) +
+    geom_point(aes(color = watershed), size = 3) +
+    scale_color_manual(values = cal_palette("figmtn")) +
+    labs(x = "Previous Year's Total Emergence",
+         y = "Annual Total Emergence (individuals)",
+         color = "Watershed") +
+    theme_bw())
+
 # Combine into a single plot.
-fig_all_sf_indices <- fig1_ind_sf | fig3_ind_sf | fig2_ind_sf
+(fig_all_sf_indices <- fig1_ind_sf | fig3_ind_sf | fig2_ind_sf | fig4_ind_sf)
 
 # Export figure.
 # ggsave(plot = fig_all_sf_indices,
-#        filename = "figures/emerge_indices_sf_062424.jpg",
-#        width = 30,
-#        height = 8,
+#        filename = "figures/emerge_indices_sf_070125.jpg",
+#        width = 40,
+#        height = 10,
 #        units = "cm")
 
 # So the tight correlation between peak and annual emergence
@@ -572,6 +680,11 @@ dat_peak_cf <- dat_peak_cf %>%
 dat_indices_cf <- full_join(dat_peak_cf, dat_sum_cf,
                             by = c("watershed",
                                    "Year"))
+
+dat_indices_cf <- dat_indices_cf %>%
+  group_by(watershed) %>%
+  mutate(previous_annual_count = lag(annual_count)) %>%
+  ungroup()
 
 (fig1_ind_cf <- ggplot(dat_indices_cf, aes(x = jday_peak,
                                            y = annual_count)) +
@@ -590,7 +703,8 @@ dat_indices_cf <- full_join(dat_peak_cf, dat_sum_cf,
     labs(x = "Peak Emergence (individuals)",
          y = "Annual Total Emergence (individuals)",
          color = "Watershed") +
-    theme_bw())
+    theme_bw() +
+    theme(legend.position = "none"))
 
 (fig3_ind_cf <- ggplot(dat_indices_cf, aes(x = jday_peak,
                                            y = total_count_peak)) +
@@ -602,15 +716,24 @@ dat_indices_cf <- full_join(dat_peak_cf, dat_sum_cf,
     theme_bw() +
     theme(legend.position = "none"))
 
+(fig4_ind_cf <- ggplot(dat_indices_cf, aes(x = previous_annual_count,
+                                           y = annual_count)) +
+    geom_point(aes(color = watershed), size = 3) +
+    scale_color_manual(values = cal_palette("figmtn")) +
+    labs(x = "Previous Year's Total Emergence",
+         y = "Annual Total Emergence (individuals)",
+         color = "Watershed") +
+    theme_bw())
+
 # Combine into a single plot.
-fig_all_cf_indices <- fig1_ind_cf | fig3_ind_cf | fig2_ind_cf
+(fig_all_cf_indices <- fig1_ind_cf | fig3_ind_cf | fig2_ind_cf | fig4_ind_cf)
 
 # Export figure.
-ggsave(plot = fig_all_cf_indices,
-       filename = "figures/emerge_indices_cf_062424.jpg",
-       width = 30,
-       height = 8,
-       units = "cm")
+# ggsave(plot = fig_all_cf_indices,
+#        filename = "figures/emerge_indices_cf_070125.jpg",
+#        width = 40,
+#        height = 10,
+#        units = "cm")
 
 # So the tight correlation between peak and annual emergence
 # holds when only examining caddisflies as well.
