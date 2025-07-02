@@ -92,7 +92,7 @@ dat_temp_counts <- left_join(dat_temp_peaks, dat_total_weekly,
 dat_deg_days <- dat_temp_counts %>%
   # making NAs zeroes for now
   mutate(mean_tempC_ed = replace_na(mean_tempC_ed, 0)) %>%
-  mutate(degree_day = mean_tempC_ed - 1) %>%
+  mutate(degree_day = mean_tempC_ed - 1) %>% # using 1 deg C as baseline
   mutate(degree_day_ed = case_when(degree_day > 0 ~ degree_day,
                                    TRUE ~ 0)) %>%
   group_by(watershed, Year) %>%
@@ -114,7 +114,36 @@ dat_deg_days_trim <- dat_deg_days %>%
    labs(x = "Day of Year",
         y = "Cumulative Degree Days") +
    facet_grid(watershed ~ Year) +
-   theme_bw()) # hmmm this isn't super informative
+   theme_bw()) 
+
+# hmmm this isn't super intuitive, so need to make another plot
+# to show consistently of emergence timing across years
+
+# And create list with which to add in count annotations
+dat_text <- data.frame(
+  label = c("n = 5", "n = 4", "n = 6", "n = 2", "n = 2"),
+  Year = c(2018, 2019, 2020, 2021, 2022))
+
+(fig_degday_panels <- ggplot(dat_deg_days) +
+    geom_line(aes(x = DOY, y = sum_degree_days, color = watershed),
+              alpha = 0.75) +
+    geom_vline(aes(xintercept = peakDOY, color = watershed),
+               alpha = 0.75, linewidth = 0.75) +
+    scale_color_manual(values = c("#C0D7B5", "#AFC5A4", "#9BAF90", 
+                                 "#829375", "#626F52", "#475035", "#3B422D")) +
+    labs(x = "Day of Year",
+         y = "Cumulative Degree Days") +
+    facet_grid(. ~ Year) +
+    geom_text(data = dat_text,
+              mapping = aes(x = 290, y = 6000, label = label)) +
+    theme_bw())
+
+# Export figure.
+# ggsave(plot = fig_degday_panels,
+#        filename = "figures/peak_degdays_070225.jpg",
+#        width = 40,
+#        height = 8,
+#        units = "cm")
 
 (fig_degree_days <- ggplot(dat_deg_days_trim,
                            aes(x = watershed,
@@ -136,6 +165,22 @@ dat_deg_days_trim <- dat_deg_days %>%
 #        width = 14,
 #        height = 10,
 #        units = "cm")
+
+mean(dat_deg_days_trim$peakDOY) # 146 or May 26
+sd(dat_deg_days_trim$peakDOY) # 9 or just over 1 week (which is data resolution)
+
+mean(dat_deg_days_trim$mean_tempC_ed) # 12.5 deg C
+sd(dat_deg_days_trim$mean_tempC_ed) # 3.7 deg C
+
+mean(dat_deg_days_trim$degree_day_ed) # 11.51
+sd(dat_deg_days_trim$degree_day_ed) # 3.7 deg C
+
+# Removing the one weird day in W3 before calculating deg day stats
+dat_deg_days_trim_ed <- dat_deg_days_trim %>%
+  filter(sum_degree_days < 1000)
+
+mean(dat_deg_days_trim_ed$sum_degree_days) # 280 deg. days
+sd(dat_deg_days_trim_ed$sum_degree_days) # 57 deg. days
 
 # End of script.
 
