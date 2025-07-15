@@ -103,19 +103,32 @@ dat_peak_cf <- dat_total_weekly_cf %>%
 
 ##### Warming #####
 
-# Create peak emergence dataset specific to summer
+# Create peak emergence dataset specific to early
 # peak dates.
-dat_peak_summer <- dat_total_weekly %>%
+dat_peak_early <- dat_total_weekly %>%
   mutate(month = month(Date)) %>%
-  filter(month < 9) %>%
+  filter(month < 10) %>%
   group_by(watershed, Year) %>%
   slice(which.max(total_count)) %>%
   mutate(jday = yday(Date)) %>%
   ungroup()
 
 # Export for use in seasonal timetable.
-# saveRDS(dat_peak_summer,
-#         "data_working/warm_peak_emerge_dates_070125.rds")
+# saveRDS(dat_peak_early,
+#         "data_working/warm_peak_emerge_dates_070725.rds")
+
+# Do the same for dipterans only
+dat_peak_dip_early <- dat_total_weekly_dip %>%
+  mutate(month = month(Date)) %>%
+  filter(month < 10) %>%
+  group_by(watershed, Year) %>%
+  slice(which.max(total_count)) %>%
+  mutate(jday = yday(Date)) %>%
+  ungroup()
+
+# Export for use in seasonal timetable.
+# saveRDS(dat_peak_dip_early,
+#         "data_working/warm_peak_emerge_dip_dates_070725.rds")
 
 # Also, going to create peak emergence with a week on either side.
 # Select columns of interest from peak dataset.

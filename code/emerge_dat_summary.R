@@ -21,6 +21,7 @@ library(tidyverse)
 library(lubridate)
 library(calecopal)
 library(viridis)
+library(RColorBrewer)
 
 # Load data.
 dat <- read_csv("data_raw/sticky_trap_counts_070125.csv")
@@ -103,6 +104,18 @@ dat_long_aq <- dat_long_trim %>%
 
 # Export data file for use in future scripts.
 # saveRDS(dat_long_aq, "data_working/aquatic_counts_long_070125.rds")
+
+# Quick calcs for the HB annual coop meeting presentation
+dat_annual_aq <- dat_long_aq %>%
+  group_by(watershed, year, Order) %>%
+  summarize(sum_total = sum(count, na.rm = TRUE)) %>%
+  ungroup() %>%
+  pivot_wider(names_from = Order, values_from = sum_total)
+
+mean(dat_annual_aq$dipteran) # 9103
+mean(dat_annual_aq$caddisfly) # 89
+mean(dat_annual_aq$stonefly) # 174
+mean(dat_annual_aq$mayfly) # 9
 
 #### Plot ####
 
@@ -311,6 +324,43 @@ dat_ws <- dat_ws %>%
 #        height = 10,
 #        units = "cm")
 
+# Time series of only dipterans for watersheds 5 & 6 (complete records)
+# Timeseries plot including only aq black flies
+dat_dipt_56 <- dat_order %>%
+  filter(Order == "dipteran") %>%
+  filter(watershed %in% c(5,6)) %>%
+  mutate(month = month(Date)) %>%
+  # a quick eyeball suggests all peaks happen post October 1 (!)
+  mutate(period = case_when(month < 10 ~ "early",
+                            TRUE ~ "late"))
+
+(fig1_dipt <- ggplot(dat_dipt_56, aes(x = Date, 
+                                  y = total_count,
+                                  #color = period,
+                                  group = year)) +
+    geom_line(linewidth = 0.75) +
+    #scale_color_manual(values = c("black", "gray70")) +
+    scale_x_continuous(
+      breaks = seq.Date(as.Date("2018-01-01"), 
+                        as.Date("2024-12-31"), 
+                        by = "1 year"),
+      labels = ~ format(.x, "%Y")) +
+    labs(y = "Weekly Count of Black Flies") +
+    facet_grid(watershed~., 
+               labeller = labeller(
+                 watershed = c('5'="Watershed 5",
+                               '6'="Watershed 6"))) +
+    theme_bw() +
+    theme(text = element_text(size = 20),
+          legend.position = "none"))
+
+# Export figure.
+# ggsave(plot = fig1_dipt,
+#        filename = "figures/emerge_aq_dipt_070725.jpg",
+#        width = 45,
+#        height = 15,
+#        units = "cm")
+
 ##### Cumulative #####
 
 # Calculate cumulative emergence
@@ -345,6 +395,45 @@ dat_cumulative <- dat_ws %>%
 #        filename = "figures/emerge_cumulative_051324.jpg",
 #        width = 40,
 #        height = 17,
+#        units = "cm")
+
+##### Sum Total #####
+
+# Calculate total emergence
+dat_dipt_56_sum <- dat_dipt_56 %>%
+  group_by(watershed, year, period) %>%
+  summarize(sum_total_count = sum(replace_na(total_count, 0))) %>%
+  ungroup()
+
+# Save out for future use.
+# saveRDS(dat_dipt_56_sum, 
+#         "data_working/sum_emerge_dipt_070825.csv")
+
+(fig2_dipt <- ggplot(dat_dipt_56_sum %>%
+                       filter(period == "early"), 
+                     aes(x = watershed, 
+                         y = sum_total_count)) +
+    geom_boxplot(linewidth = 0.75, width = 0.4) +
+    geom_jitter(size = 7, shape = 21, 
+                width = 0.2, alpha = 0.8,
+                aes(fill = factor(year))) +
+    labs(y = "Annual Count of Black Flies",
+         x = "Watershed",
+         fill = "Year") +
+    scale_fill_brewer(palette = "Dark2") +
+    theme_bw() +
+    theme(text = element_text(size = 20)))
+
+# Add to time series above.
+(fig_dipt <- fig1_dipt + fig2_dipt +
+    plot_layout(widths = c(3, 1)) +
+    plot_annotation(tag_levels = "A"))
+
+# Export figure.
+# ggsave(plot = fig_dipt,
+#        filename = "figures/emerge_dipt_070825.jpg",
+#        width = 60,
+#        height = 15,
 #        units = "cm")
 
 # End of script.

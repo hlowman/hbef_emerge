@@ -7,46 +7,46 @@
 # The following script will calculate cumulative degree days
 # leading up to peak emergence for every counted year.
 
-#### TO-DOs ####
-
-# (1) Determine if January 1st is an appropriate start for each year.
-# (2) Determine if 1degree Celsius is an appropriate baseline.
-# (3) Calculate offset between watersheds for which there is data missing but
-# its next nearest neighbor has data to help fill in. Missing site-years include:
-# - W1 2018 & 2019
-# - W3 2020 (don't trust this data due to drift)
-
 #### Setup ####
 
 # Load necessary packages.
 library(here)
 library(tidyverse)
 library(lubridate)
+library(RColorBrewer)
 
 # Load temperature data.
 temp_dat <- readRDS("data_working/stream_temps_w1234569.rds")
 
 # Load emergence data.
+early_peak_dip_dat <- readRDS("data_working/warm_peak_emerge_dip_dates_070725.rds")
 peak_dat <- readRDS("data_working/warm_peak_emerge_dates_070125.rds")
 emerge_dat <- readRDS("data_working/aquatic_counts_long_070125.rds")
 
 #### Tidy ####
 
-# Need to trim down the emergence data to stop at peak emergence.
-# Create a dataset of total weekly emergence for all aquatic taxa.
-dat_total_weekly <- emerge_dat %>%
-  group_by(watershed, Date) %>%
-  summarize(total_count = sum(count, na.rm = TRUE)) %>%
-  ungroup() %>%
-  mutate(Year = year(Date))
-
-dat_peaks <- peak_dat %>%
-  select(watershed, Year, Date) %>%
+early_peak_dip_dat <- early_peak_dip_dat %>%
   rename(peak_Date = Date)
 
-dat_weekly_peaks <- left_join(dat_total_weekly, dat_peaks) %>%
-  mutate(prepost = case_when(Date <= peak_Date ~ 1,
-                             Date > peak_Date ~ 0))
+# Need to trim down the emergence data to stop at peak emergence.
+# NOTE- Commenting out the below for now since dipteran peaks data has 
+# already had this done to it.
+
+
+# Create a dataset of total weekly emergence for all aquatic taxa.
+# dat_total_weekly <- emerge_dat %>%
+#   group_by(watershed, Date) %>%
+#   summarize(total_count = sum(count, na.rm = TRUE)) %>%
+#   ungroup() %>%
+#   mutate(Year = year(Date))
+# 
+# dat_peaks <- peak_dat %>%
+#   select(watershed, Year, Date) %>%
+#   rename(peak_Date = Date)
+# 
+# dat_weekly_peaks <- left_join(dat_total_weekly, dat_peaks) %>%
+#   mutate(prepost = case_when(Date <= peak_Date ~ 1,
+#                              Date > peak_Date ~ 0))
 
 # dat_pre_peaks <- dat_weekly_peaks %>%
 #   filter(prepost == 1) %>%
@@ -64,14 +64,10 @@ temp_dat <- temp_dat %>%
                                watershed == "W6" ~ "6",
                                watershed == "W9" ~ "9"))
 
-dat_temp_peaks <- left_join(temp_dat, dat_peaks,
+dat_temp_peaks <- left_join(temp_dat, early_peak_dip_dat,
                             by = c("watershed", "Year")) %>%
   mutate(prepost = case_when(date <= peak_Date ~ 1,
                              date > peak_Date ~ 0))
-
-# dat_temp_pre_peaks <- dat_temp_peaks %>%
-#   filter(prepost == 1) %>%
-#   select(watershed, Year, date, mean_tempC_sw)
 
 # Need to infill temperature values, using mean for now.
 dat_temp_peaks <- dat_temp_peaks %>%
@@ -81,25 +77,22 @@ dat_temp_peaks <- dat_temp_peaks %>%
 
 # This leaves two main instances of missingness - a two-day period in
 # 2020 in W1, and a few weeks in January 2022 in W6.
-# Assuming in both instances that these temperatures are below 1 deg C.
-
-# And finally join with the sticky trap dates/counts.
-dat_temp_counts <- left_join(dat_temp_peaks, dat_total_weekly,
-                             by = c("watershed", "Year", "date" = "Date"))
 
 #### Degree Days ####
 
-dat_deg_days <- dat_temp_counts %>%
+# Assuming in both instances of missingness that temperatures are below 1 deg C.
+dat_deg_days <- dat_temp_peaks %>%
   # making NAs zeroes for now
   mutate(mean_tempC_ed = replace_na(mean_tempC_ed, 0)) %>%
-  mutate(degree_day = mean_tempC_ed - 1) %>% # using 1 deg C as baseline
+  mutate(degree_day = mean_tempC_ed - 4) %>% # using 4 deg C as baseline
   mutate(degree_day_ed = case_when(degree_day > 0 ~ degree_day,
                                    TRUE ~ 0)) %>%
   group_by(watershed, Year) %>%
   mutate(sum_degree_days = cumsum(degree_day_ed)) %>%
   # and add column for julian day
   mutate(DOY = yday(date),
-         peakDOY = yday(peak_Date))
+         peakDOY = yday(peak_Date)) %>% 
+  ungroup()
 
 dat_deg_days_trim <- dat_deg_days %>%
   mutate(keep = case_when(DOY == peakDOY ~ 1,
@@ -117,32 +110,76 @@ dat_deg_days_trim <- dat_deg_days %>%
    theme_bw()) 
 
 # hmmm this isn't super intuitive, so need to make another plot
-# to show consistently of emergence timing across years
+# to show consistency of emergence timing across years
 
-# And create list with which to add in count annotations
+dat_peaks <- dat_deg_days %>%
+  filter(watershed %in% c(5,6)) %>%
+  select(watershed, Year, peakDOY) %>%
+  group_by(watershed, Year) %>%
+  unique() %>%
+  ungroup()
+
+# And create list with which to add in DOY annotations
 dat_text <- data.frame(
-  label = c("n = 5", "n = 4", "n = 6", "n = 2", "n = 2"),
-  Year = c(2018, 2019, 2020, 2021, 2022))
+  label = c("Peak DOY = 155", "Peak DOY = 148", "Peak DOY = 147", "Peak DOY = 137", "Peak DOY = 136",
+            "Peak DOY = 134", "Peak DOY = 140", "Peak DOY = 149", "Peak DOY = 137", "Peak DOY = 136"),
+  Year = c(2018, 2019, 2020, 2021, 2022,
+           2018, 2019, 2020, 2021, 2022),
+  watershed = c(5,5,5,5,5,
+                6,6,6,6,6))
 
-(fig_degday_panels <- ggplot(dat_deg_days) +
-    geom_line(aes(x = DOY, y = sum_degree_days, color = watershed),
-              alpha = 0.75) +
-    geom_vline(aes(xintercept = peakDOY, color = watershed),
-               alpha = 0.75, linewidth = 0.75) +
-    scale_color_manual(values = c("#C0D7B5", "#AFC5A4", "#9BAF90", 
-                                 "#829375", "#626F52", "#475035", "#3B422D")) +
+# And we're going to trim down to just W5 & W6.
+(fig_degday_56 <- ggplot(dat_deg_days %>%
+                           filter(watershed %in% c(5,6))) +
+    geom_line(aes(x = DOY, y = sum_degree_days, color = factor(Year)),
+              linewidth = 0.75)+
+    scale_color_brewer(palette = "Dark2") +
+    geom_vline(aes(xintercept = peakDOY),
+               linewidth = 0.75) +
     labs(x = "Day of Year",
          y = "Cumulative Degree Days") +
-    facet_grid(. ~ Year) +
+    facet_grid(Year ~ watershed,
+               labeller = labeller(
+                 watershed = c('5'="Watershed 5",
+                               '6'="Watershed 6"))) +
     geom_text(data = dat_text,
-              mapping = aes(x = 290, y = 6000, label = label)) +
-    theme_bw())
+              mapping = aes(x = 300, y = 250, label = label)) +
+    theme_bw() +
+    theme(text = element_text(size = 20),
+          legend.position = "none"))
 
 # Export figure.
-# ggsave(plot = fig_degday_panels,
-#        filename = "figures/peak_degdays_070225.jpg",
-#        width = 40,
-#        height = 8,
+# ggsave(plot = fig_degday_56,
+#        filename = "figures/early_peak_degdays_070825.jpg",
+#        width = 20,
+#        height = 25,
+#        units = "cm")
+
+(fig_degday_peak_56 <- ggplot(dat_deg_days_trim %>%
+                       filter(watershed %in% c(5,6)), 
+                     aes(x = watershed, 
+                         y = sum_degree_days)) +
+    geom_boxplot(linewidth = 0.75, width = 0.4) +
+    geom_jitter(size = 7, shape = 21, 
+                width = 0.2, alpha = 0.8,
+                aes(fill = factor(Year))) +
+    labs(y = "Cumulative Degree Days\nat Peak Emergence",
+         x = "Watershed",
+         fill = "Year") +
+    scale_fill_brewer(palette = "Dark2") +
+    theme_bw() +
+    theme(text = element_text(size = 20)))
+
+# Add to time series above.
+(fig_degday <- fig_degday_56 + fig_degday_peak_56 +
+    plot_layout(widths = c(3, 1)) +
+    plot_annotation(tag_levels = "A"))
+
+# Export figure.
+# ggsave(plot = fig_degday,
+#        filename = "figures/degday_dipt_070725.jpg",
+#        width = 60,
+#        height = 15,
 #        units = "cm")
 
 (fig_degree_days <- ggplot(dat_deg_days_trim,

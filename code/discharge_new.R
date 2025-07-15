@@ -5,7 +5,7 @@
 #### README ####
 
 # The following script will estimate discharge metrics
-# leading up to peak emergence each year.
+# to assist with explanation of annual black fly emergence magnitude.
 
 #### Setup ####
 
@@ -15,93 +15,42 @@ library(tidyverse)
 library(lubridate)
 
 # Load discharge data.
-q_dat <- read_csv("data_raw/HBEF_DailyStreamflow_1956-2023.csv")
+q_dat <- read_csv("data_raw/HBEF_DailyStreamflow_1956-2024.csv")
 # Streamflow is in mm/day.
-
-# Load emergence indices.
-emerge_indices <- readRDS("data_working/emerge_indices_all_070125.rds")
-emerge_cf <- readRDS("data_working/emerge_indices_cf_070125.rds")
-emerge_sf <- readRDS("data_working/emerge_indices_sf_070125.rds")
 
 #### Q metrics ####
 
-# Rather than over-engineering the seasons, I am (for now) simply
-# putting a date threshold on things.
+# Calculate Q percentiles for the full record.
+q_perc <- q_dat %>%
+  group_by(WS) %>%
+  summarize(perc10 = quantile(Streamflow,
+                           probs = 0.1,
+                           na.rm = TRUE),
+            perc90 = quantile(Streamflow,
+                              probs = 0.9,
+                              na.rm = TRUE)) %>%
+  ungroup()
 
-# Calculate mean Q for each year from March 1 to May 31.
-q_means <- q_dat %>%
-  mutate(Year = year(DATE)) %>%
-  mutate(Month = month(DATE)) %>%
-  filter(Year > 2017 & Month > 2 & Month < 5) %>%
-  group_by(WS, Year) %>%
-  summarize(meanQ_mmd = mean(Streamflow)) %>%
+# And use to assign to dataset of interest.
+q_dat_low_high_flow_days <- q_dat %>%
+  left_join(q_perc) %>%
+  mutate(month = month(DATE),
+         year = year(DATE),
+         water_year = case_when(month %in% c(1,2,3,4,5) ~ year-1,
+                                month %in% c(6,7,8,9,10,11,12) ~ year),
+         low_flow_day = case_when(Streamflow <= perc10 ~ 1,
+                                  TRUE ~ 0),
+         high_flow_day = case_when(Streamflow >= perc90 ~ 1,
+                                   TRUE ~ 0)) %>%
+  group_by(WS, water_year) %>%
+  summarize(low_flow_days = sum(low_flow_day),
+            high_flow_days = sum(high_flow_day)) %>%
   ungroup() %>%
-  mutate(WS = as.character(WS))
+  mutate(low_flow_perc = percent_rank(low_flow_days),
+         high_flow_perc = percent_rank(high_flow_days))
 
-# And join with emergence datasets.
-emergence_q <- left_join(emerge_indices, q_means,
-                         by = c("watershed" = "WS", "Year"))
-emergence_cf_q <- left_join(emerge_cf, q_means,
-                            by = c("watershed" = "WS", "Year"))
-emergence_sf_q <- left_join(emerge_sf, q_means,
-                            by = c("watershed" = "WS", "Year"))
-
-#### Plot ####
-
-(fig1_discharge <- ggplot(emergence_q,
-                           aes(x = meanQ_mmd,
-                               y = annual_count,
-                               fill = factor(Year))) +
-   geom_point(size = 6, shape = 21, alpha = 0.75) +
-   scale_fill_manual(values = c("white", "#C6B6E9",
-                                "#AA91DE","#8D6DD3", "#7148C8",
-                                "#5524BD","#3900B3")) +
-   labs(x = "Mean Discharge March 1 - April 30",
-        y = "Annual Total Emergence",
-        fill = "Year") +
-   theme_bw() +
-   theme(text = element_text(size = 14),
-         legend.position = "none"))
-
-(fig2_discharge <- ggplot(emergence_cf_q,
-                          aes(x = meanQ_mmd,
-                              y = annual_count,
-                              fill = factor(Year))) +
-    geom_point(size = 6, shape = 21, alpha = 0.75) +
-    scale_fill_manual(values = c("white", "#C6B6E9",
-                                 "#AA91DE","#8D6DD3", "#7148C8",
-                                 "#5524BD","#3900B3")) +
-    labs(x = "Mean Discharge March 1 - April 30",
-         y = "Annual Caddisfly Emergence",
-         fill = "Year") +
-    theme_bw() +
-    theme(text = element_text(size = 14),
-          legend.position = "none"))
-
-(fig3_discharge <- ggplot(emergence_sf_q,
-                          aes(x = meanQ_mmd,
-                              y = annual_count,
-                              fill = factor(Year))) +
-    geom_point(size = 6, shape = 21, alpha = 0.75) +
-    scale_fill_manual(values = c("white", "#C6B6E9",
-                                 "#AA91DE","#8D6DD3", "#7148C8",
-                                 "#5524BD","#3900B3")) +
-    labs(x = "Mean Discharge March 1 - April 30",
-         y = "Annual Stonefly Emergence",
-         fill = "Year") +
-    theme_bw() +
-    theme(text = element_text(size = 14)))
-
-(fig_discharge <- fig1_discharge + fig2_discharge + fig3_discharge +
-    plot_annotation(tag_levels = "a"))
-
-# ggsave(plot = fig_discharge,
-#        filename = "figures/annual_emerge_discharge_070125.jpg",
-#        width = 30,
-#        height = 10,
-#        units = "cm")
-
-# End of script.
-
+# Export dataset.
+# saveRDS(q_dat_low_high_flow_days,
+#         "data_working/low_high_flow_days.rds")
 
 # End of script.
