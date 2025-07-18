@@ -44,13 +44,16 @@ q_dat_low_high_flow_days <- q_dat %>%
                                    TRUE ~ 0)) %>%
   group_by(WS, water_year) %>%
   summarize(low_flow_days = sum(low_flow_day),
-            high_flow_days = sum(high_flow_day)) %>%
+            high_flow_days = sum(high_flow_day),
+            cv_q = sd(Streamflow, na.rm = TRUE)/
+              mean(Streamflow, na.rm = TRUE)) %>%
   ungroup() %>%
   mutate(low_flow_perc = percent_rank(low_flow_days),
-         high_flow_perc = percent_rank(high_flow_days))
+         high_flow_perc = percent_rank(high_flow_days),
+         cv_q_perc = percent_rank(cv_q))
 
 # Export dataset.
 # saveRDS(q_dat_low_high_flow_days,
-#         "data_working/low_high_flow_days.rds")
+#         "data_working/low_high_flow_days_cvQ.rds")
 
 # End of script.

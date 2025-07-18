@@ -18,6 +18,7 @@
 # Load necessary packages.
 library(here)
 library(tidyverse)
+library(patchwork)
 library(lubridate)
 library(calecopal)
 library(viridis)
@@ -336,16 +337,16 @@ dat_dipt_56 <- dat_order %>%
 
 (fig1_dipt <- ggplot(dat_dipt_56, aes(x = Date, 
                                   y = total_count,
-                                  #color = period,
+                                  color = period,
                                   group = year)) +
-    geom_line(linewidth = 0.75) +
-    #scale_color_manual(values = c("black", "gray70")) +
+    geom_line(linewidth = 1) +
+    scale_color_manual(values = c("black", "gray70")) +
     scale_x_continuous(
       breaks = seq.Date(as.Date("2018-01-01"), 
                         as.Date("2024-12-31"), 
                         by = "1 year"),
       labels = ~ format(.x, "%Y")) +
-    labs(y = "Weekly Count of Black Flies") +
+    labs(y = "Weekly Count of Simuliidae") +
     facet_grid(watershed~., 
                labeller = labeller(
                  watershed = c('5'="Watershed 5",
@@ -417,7 +418,7 @@ dat_dipt_56_sum <- dat_dipt_56 %>%
     geom_jitter(size = 7, shape = 21, 
                 width = 0.2, alpha = 0.8,
                 aes(fill = factor(year))) +
-    labs(y = "Annual Count of Black Flies",
+    labs(y = "Annual Count of Simuliidae",
          x = "Watershed",
          fill = "Year") +
     scale_fill_brewer(palette = "Dark2") +
@@ -426,13 +427,13 @@ dat_dipt_56_sum <- dat_dipt_56 %>%
 
 # Add to time series above.
 (fig_dipt <- fig1_dipt + fig2_dipt +
-    plot_layout(widths = c(3, 1)) +
+    plot_layout(widths = c(5, 1)) +
     plot_annotation(tag_levels = "A"))
 
 # Export figure.
 # ggsave(plot = fig_dipt,
-#        filename = "figures/emerge_dipt_070825.jpg",
-#        width = 60,
+#        filename = "figures/emerge_dipt_071825.jpg",
+#        width = 45,
 #        height = 15,
 #        units = "cm")
 
