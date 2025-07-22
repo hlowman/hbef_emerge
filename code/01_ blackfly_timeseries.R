@@ -101,9 +101,9 @@ dat_dipt_stat <- dat_dipt_sum %>%
 
 # Export figure.
 # ggsave(plot = fig_dipt,
-#        filename = "figures/emerge_dipt_071825.jpg",
+#        filename = "figures/emerge_dipt_072225.jpg",
 #        width = 45,
-#        height = 15,
+#        height = 22,
 #        units = "cm")
 
 # End of script.

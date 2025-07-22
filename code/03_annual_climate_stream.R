@@ -1,11 +1,11 @@
-### Annual Climate and Stream Data Summary
+### Annual Climate, Chemistry, and Stream Data Summary
 ### July 18, 2025
 ### Heili Lowman
 
 #### README ####
 
 # The following script will aggregate existing records to
-# describe annual statistics regarding climate and streamflow.
+# describe statistics regarding climate, chemistry, and streamflow.
 
 #### Setup ####
 
@@ -18,6 +18,7 @@ library(lubridate)
 # Load data.
 q_dat <- read_csv("data_raw/HBEF_DailyStreamflow_1956-2024.csv") # Streamflow is in mm/day.
 ppt_dat <- read_csv("data_raw/dailyWatershedPrecip1956-2025.csv") # Precipitation is in mm.
+chem_dat <- read_csv("data_raw/HBEFdata_Current_2025-07-18.csv") # Weekly chemistry data starting in 2013.
 
 #### Tidy ####
 
@@ -85,6 +86,27 @@ ppt_metrics_trim <- ppt_metrics %>%
   filter(water_year %in% c(2017, 2018, 2019,
                            2020, 2021, 2022,
                            2023, 2024))
+
+##### Chem Metrics #####
+
+# Create aggregated chemistry dataset.
+chem_metrics_17onward <- chem_dat %>%
+  mutate(month = month(date),
+         year = year(date),
+         water_year = case_when(month %in% c(1,2,3,4,5) ~ year-1,
+                                month %in% c(6,7,8,9,10,11,12) ~ year)) %>%
+  filter(water_year > 2017) %>%
+  filter(site %in% c("W1", "W2", "W3", "W4", 
+                     "W5", "W6", "W9", "HBK")) %>%
+  group_by(site) %>%
+  summarize(pH_avg = mean(pH, na.rm = TRUE),
+            spCond_avg = mean(spCond, na.rm = TRUE),
+            temp_avg = mean(temp, na.rm = TRUE),
+            NO3_N_avg = mean(NO3_N, na.rm = TRUE),
+            PO4_avg = mean(PO4, na.rm = TRUE),
+            DOC_avg = mean(DOC, na.rm = TRUE),
+            chla_avg = mean(chla_M, na.rm = TRUE)) %>%
+  ungroup()
 
 # End of script.
 
