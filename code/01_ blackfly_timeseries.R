@@ -28,10 +28,9 @@ dat_order <- dat %>%
   summarize(total_count = sum(count, na.rm = TRUE)) %>%
   ungroup()
 
-# Trim data down to only black flies in watersheds 5 & 6.
+# Trim data down to only black flies.
 dat_dipt <- dat_order %>%
   filter(Order == "dipteran") %>%
-  filter(watershed %in% c(5,6)) %>%
   mutate(month = month(Date)) %>%
   # a quick eyeball suggests all peaks happen post October 1 (!)
   mutate(period = case_when(month < 10 ~ "early",
@@ -50,9 +49,32 @@ dat_dipt_stat <- dat_dipt_sum %>%
             sd_total = sd(sum_total_count)) %>%
   ungroup()
 
+# Calculate weekly emergence
+dat_dipt_weekly <- dat_dipt %>%
+  group_by(watershed, year, period) %>%
+  summarize(mean_weekly = mean(total_count, na.rm = TRUE),
+            min_weekly = min(total_count, na.rm = TRUE),
+            max_weekly = max(total_count, na.rm = TRUE)) %>%
+  ungroup()
+
+# Pull out peak emergence dates
+dat_dipt_peaks <- dat_dipt %>%
+  group_by(watershed, year, period) %>%
+  slice_max(total_count) %>%
+  ungroup() %>%
+  mutate(peak_DOY = yday(Date))
+
+# Early peak dataset
+dat_dipt_early_peaks <- dat_dipt_peaks %>%
+  filter(period == "early")
+
+mean(dat_dipt_early_peaks$peak_DOY) # 149
+sd(dat_dipt_early_peaks$peak_DOY) # 15
+
 #### Plot ####
 
-(fig1_dipt <- ggplot(dat_dipt, aes(x = Date, 
+(fig1_dipt <- ggplot(dat_dipt %>%
+                       filter(watershed %in% c(5,6)), aes(x = Date, 
                                       y = total_count,
                                       color = period,
                                       group = year)) +
@@ -80,6 +102,7 @@ dat_dipt_stat <- dat_dipt_sum %>%
 #        units = "cm")
 
 (fig2_dipt <- ggplot(dat_dipt_sum %>%
+                       filter(watershed %in% c(5,6)) %>%
                        filter(period == "early"), 
                      aes(x = watershed, 
                          y = sum_total_count)) +

@@ -21,37 +21,34 @@ temp_dat <- readRDS("data_working/stream_temps_w1234569.rds")
 # Load emergence data.
 early_peak_dip_dat <- readRDS("data_working/warm_peak_emerge_dip_dates_070725.rds")
 peak_dat <- readRDS("data_working/warm_peak_emerge_dates_070125.rds")
-emerge_dat <- readRDS("data_working/aquatic_counts_long_070125.rds")
+emerge_dat <- readRDS("data_working/aquatic_counts_complete_yrs_071825.rds")
 
 #### Tidy ####
 
 early_peak_dip_dat <- early_peak_dip_dat %>%
-  rename(peak_Date = Date)
+  rename(peak_Date = Date,
+         peak_count = total_count)
 
-# Need to trim down the emergence data to stop at peak emergence.
-# NOTE- Commenting out the below for now since dipteran peaks data has 
-# already had this done to it.
+# Need to trim down the emergence data to early season.
 
+# Summarize by order.
+dat_order <- emerge_dat %>%
+  group_by(watershed, year, Date, Order) %>%
+  # note, this will sum across all traps collected in a given week
+  summarize(total_count = sum(count, na.rm = TRUE)) %>%
+  ungroup()
 
-# Create a dataset of total weekly emergence for all aquatic taxa.
-# dat_total_weekly <- emerge_dat %>%
-#   group_by(watershed, Date) %>%
-#   summarize(total_count = sum(count, na.rm = TRUE)) %>%
-#   ungroup() %>%
-#   mutate(Year = year(Date))
-# 
-# dat_peaks <- peak_dat %>%
-#   select(watershed, Year, Date) %>%
-#   rename(peak_Date = Date)
-# 
-# dat_weekly_peaks <- left_join(dat_total_weekly, dat_peaks) %>%
-#   mutate(prepost = case_when(Date <= peak_Date ~ 1,
-#                              Date > peak_Date ~ 0))
-
-# dat_pre_peaks <- dat_weekly_peaks %>%
-#   filter(prepost == 1) %>%
-#   rename(date = Date) %>%
-#   select(watershed, Year, date, total_count)
+# Trim data down to only black flies in watersheds 5 & 6.
+dat_dipt <- dat_order %>%
+  filter(Order == "dipteran") %>%
+  filter(watershed %in% c(5,6)) %>%
+  mutate(month = month(Date)) %>%
+  # a quick eyeball suggests all peaks happen post October 1 (!)
+  mutate(period = case_when(month < 10 ~ "early",
+                            TRUE ~ "late")) %>%
+  rename(Year = year,
+         date = Date) %>%
+  select(-month)
 
 # Join peaks with temperature data.
 temp_dat <- temp_dat %>%
@@ -78,26 +75,28 @@ dat_temp_peaks <- dat_temp_peaks %>%
 # This leaves two main instances of missingness - a two-day period in
 # 2020 in W1, and a few weeks in January 2022 in W6.
 
-#### Degree Days ####
+# Also need to join emergence values to this.
+dat_temp_peaks_emerge <- left_join(dat_temp_peaks, dat_dipt,
+                                   by = c("watershed", "Year", "date"))
+
+#### Degree Days & Cumulative Emergence ####
 
 # Assuming in both instances of missingness that temperatures are below 1 deg C.
-dat_deg_days <- dat_temp_peaks %>%
+dat_deg_days <- dat_temp_peaks_emerge %>%
   # making NAs zeroes for now
   mutate(mean_tempC_ed = replace_na(mean_tempC_ed, 0)) %>%
   mutate(degree_day = mean_tempC_ed - 4) %>% # using 4 deg C as baseline
   mutate(degree_day_ed = case_when(degree_day > 0 ~ degree_day,
                                    TRUE ~ 0)) %>%
   group_by(watershed, Year) %>%
-  mutate(sum_degree_days = cumsum(degree_day_ed)) %>%
+  mutate(total_count_ed = case_when(total_count > 0 ~ total_count,
+                                    TRUE ~ 0)) %>%
+  mutate(sum_degree_days = cumsum(degree_day_ed),
+         sum_emergence = cumsum(total_count_ed)) %>%
   # and add column for julian day
   mutate(DOY = yday(date),
          peakDOY = yday(peak_Date)) %>% 
   ungroup()
-
-dat_deg_days_trim <- dat_deg_days %>%
-  mutate(keep = case_when(DOY == peakDOY ~ 1,
-                          TRUE ~ 0)) %>%
-  filter(keep == 1)
 
 #### Plot ####
 
@@ -129,15 +128,23 @@ dat_text <- data.frame(
                 6,6,6,6,6))
 
 # And we're going to trim down to just W5 & W6.
+
+# Value used to transform the data to add second y-axis.
+coeff <- 4
+
 (fig_degday_56 <- ggplot(dat_deg_days %>%
                            filter(watershed %in% c(5,6))) +
-    geom_line(aes(x = DOY, y = sum_degree_days, color = factor(Year)),
-              linewidth = 0.75)+
+    geom_line(aes(x = DOY, y = sum_degree_days),
+              linewidth = 0.75) +
+    geom_line(aes(x = DOY, y = sum_emergence/coeff, color = factor(Year))) +
     scale_color_brewer(palette = "Dark2") +
     geom_vline(aes(xintercept = peakDOY),
-               linewidth = 0.75) +
-    labs(x = "Day of Year",
-         y = "Cumulative Degree Days") +
+               linewidth = 0.75,
+               color = "gray50") +
+    labs(x = "Day of Year") +
+    scale_y_continuous(
+      name = "Cumulative Degree Days", # first axis
+      sec.axis = sec_axis(~.*coeff, name = "Cumulative Emergence")) + # second axis
     facet_grid(Year ~ watershed,
                labeller = labeller(
                  watershed = c('5'="Watershed 5",
@@ -150,8 +157,8 @@ dat_text <- data.frame(
 
 # Export figure.
 # ggsave(plot = fig_degday_56,
-#        filename = "figures/early_peak_degdays_070825.jpg",
-#        width = 20,
+#        filename = "figures/early_peak_degdays_072425.jpg",
+#        width = 25,
 #        height = 25,
 #        units = "cm")
 

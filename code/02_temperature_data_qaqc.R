@@ -16,6 +16,7 @@ library(lubridate)
 
 # Load data.
 dat <- read_csv("data_raw/HubbardBrook_weekly_stream_chemistry_1963-2024.csv")
+w6_dat <- read_csv("data_raw/hbef_temp.csv")
 
 #### Offset Calculation ####
 
