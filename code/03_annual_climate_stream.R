@@ -7,6 +7,8 @@
 # The following script will aggregate existing records to
 # describe statistics regarding climate, chemistry, and streamflow.
 
+# It will also generate an aggregated dataset for stream climate.
+
 #### Setup ####
 
 # Load necessary packages.
@@ -107,5 +109,36 @@ chem_metrics_17onward <- chem_dat %>%
             DOC_avg = mean(DOC, na.rm = TRUE),
             chla_avg = mean(chla_M, na.rm = TRUE)) %>%
   ungroup()
+
+#### Join ####
+
+# Trim Q dataset to years and sites of interest.
+q_2017 <- q_dat %>%
+  filter(DATE > "2016-12-31") %>%
+  filter(WS %in% c("1","2","3","4","5","6","9","HBK")) %>%
+  mutate(WS = as.character(WS)) %>%
+  select(DATE, WS, Streamflow)
+
+# Trim chemistry dataset to years of interest.
+chem_2017 <- chem_dat %>%
+  filter(date > "2016-12-31") %>%
+  rename(DATE = date) %>%
+  filter(site %in% c("W1","W2","W3","W4","W5","W6","W9","HBK")) %>%
+  mutate(WS = case_when(site == "W1" ~ "1",
+                        site == "W2" ~ "2",
+                        site == "W3" ~ "3",
+                        site == "W4" ~ "4",
+                        site == "W5" ~ "5",
+                        site == "W6" ~ "6",
+                        site == "W9" ~ "9",
+                        site == "HBK" ~ site,
+                        TRUE ~ NA))
+
+# Combine the two datasets.
+data_2017 <- left_join(q_2017, chem_2017,
+                       by = join_by(DATE, WS))
+
+# Export for use in other scripts.
+# saveRDS(data_2017, "data_working/stream_climate_qchem.rds")
 
 # End of script.

@@ -15,6 +15,7 @@ library(here)
 library(tidyverse)
 library(patchwork)
 library(lubridate)
+library(RColorBrewer)
 
 # Load data.
 dat <- readRDS("data_working/aquatic_counts_complete_yrs_071825.rds")
