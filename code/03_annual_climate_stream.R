@@ -60,7 +60,7 @@ q_metrics <- q_dat %>%
          cv_q_perc = percent_rank(cv_q))
 
 # Export dataset.
-# saveRDS(q_dat_low_high_flow_days,
+# saveRDS(q_metrics,
 #         "data_working/low_high_flow_days_cvQ.rds")
 
 # And trim down to sites and years of interest.

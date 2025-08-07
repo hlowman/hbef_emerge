@@ -43,6 +43,9 @@ dat_dipt_sum <- dat_dipt %>%
   summarize(sum_total_count = sum(replace_na(total_count, 0))) %>%
   ungroup()
 
+# Export for use in future scripts.
+#saveRDS(dat_dipt_sum, "data_working/sum_annual_dipt_emerge_080725.rds")
+
 # Summary statistics of annual emergence.
 dat_dipt_stat <- dat_dipt_sum %>%
   group_by(watershed, period) %>%
