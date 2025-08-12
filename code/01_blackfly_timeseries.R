@@ -68,6 +68,9 @@ dat_dipt_peaks <- dat_dipt %>%
   ungroup() %>%
   mutate(peak_DOY = yday(Date))
 
+# Export for use in future scripts.
+# saveRDS(dat_dipt_peaks, "data_working/peaks_annual_dipt_emerge_081225.rds")
+
 # Early peak dataset
 dat_dipt_early_peaks <- dat_dipt_peaks %>%
   filter(period == "early")

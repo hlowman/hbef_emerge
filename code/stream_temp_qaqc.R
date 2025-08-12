@@ -16,7 +16,7 @@
 
 #### TO-DOs ####
 
-# (1) Add data from W6 weird pond for 2023/2024.
+# (1) Add data from W6 weir pond for 2023/2024.
 
 # (2) Apply correction for W3 from W4 for 2020.
 
