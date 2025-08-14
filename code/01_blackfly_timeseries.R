@@ -18,7 +18,7 @@ library(lubridate)
 library(RColorBrewer)
 
 # Load data.
-dat <- readRDS("data_working/aquatic_counts_complete_yrs_071825.rds")
+dat <- readRDS("data_working/aquatic_counts_complete_yrs_081425.rds")
 
 #### Tidy ####
 
@@ -37,14 +37,19 @@ dat_dipt <- dat_order %>%
   mutate(period = case_when(month < 10 ~ "early",
                             TRUE ~ "late"))
 
-# Calculate total emergence
+# Calculate total emergence (reported in Table 2)
 dat_dipt_sum <- dat_dipt %>%
   group_by(watershed, year, period) %>%
   summarize(sum_total_count = sum(replace_na(total_count, 0))) %>%
   ungroup()
 
 # Export for use in future scripts.
-#saveRDS(dat_dipt_sum, "data_working/sum_annual_dipt_emerge_080725.rds")
+#saveRDS(dat_dipt_sum, "data_working/sum_annual_dipt_emerge_081425.rds")
+
+# Difference between largest and smallest sites in 2018
+9415/1374 # 685%
+# And in 2019
+19508/3522 # 554%
 
 # Summary statistics of annual emergence.
 dat_dipt_stat <- dat_dipt_sum %>%
@@ -53,7 +58,7 @@ dat_dipt_stat <- dat_dipt_sum %>%
             sd_total = sd(sum_total_count)) %>%
   ungroup()
 
-# Calculate weekly emergence
+# Calculate weekly emergence (reported in Table 2)
 dat_dipt_weekly <- dat_dipt %>%
   group_by(watershed, year, period) %>%
   summarize(mean_weekly = mean(total_count, na.rm = TRUE),
@@ -61,7 +66,7 @@ dat_dipt_weekly <- dat_dipt %>%
             max_weekly = max(total_count, na.rm = TRUE)) %>%
   ungroup()
 
-# Pull out peak emergence dates
+# Pull out peak emergence dates (reported in Table 2)
 dat_dipt_peaks <- dat_dipt %>%
   group_by(watershed, year, period) %>%
   slice_max(total_count) %>%
@@ -69,14 +74,24 @@ dat_dipt_peaks <- dat_dipt %>%
   mutate(peak_DOY = yday(Date))
 
 # Export for use in future scripts.
-# saveRDS(dat_dipt_peaks, "data_working/peaks_annual_dipt_emerge_081225.rds")
+#saveRDS(dat_dipt_peaks, "data_working/peaks_annual_dipt_emerge_081425.rds")
 
 # Early peak dataset
 dat_dipt_early_peaks <- dat_dipt_peaks %>%
   filter(period == "early")
 
-mean(dat_dipt_early_peaks$peak_DOY) # 149
-sd(dat_dipt_early_peaks$peak_DOY) # 15
+# Impose manuscript year filters
+dat_dipt_early_peaks_trim <- dat_dipt_early_peaks %>%
+  mutate(keep = case_when(watershed %in% c("5","6") & 
+                            year %in% c(2018, 2019, 2020, 2021, 2022, 2023, 2024) |
+                            watershed %in% c("1","2", "3","4", "9", "HBK") &
+                            year %in% c(2018, 2019) ~ "Y",
+                          TRUE ~ "N")) %>%
+  # and impose filter
+  filter(keep == "Y")
+
+mean(dat_dipt_early_peaks_trim$peak_DOY) # 149
+sd(dat_dipt_early_peaks_trim$peak_DOY) # 16
 
 #### Plot ####
 
@@ -101,12 +116,8 @@ sd(dat_dipt_early_peaks$peak_DOY) # 15
    theme(text = element_text(size = 20),
          legend.position = "none"))
 
-# Export figure.
-# ggsave(plot = fig1_dipt,
-#        filename = "figures/emerge_aq_dipt_070725.jpg",
-#        width = 45,
-#        height = 15,
-#        units = "cm")
+# Pasting color scheme colors here for future reference
+"#1B9E77" "#D95F02" "#7570B3" "#E7298A" "#66A61E" "#E6AB02" "#A6761D"
 
 (fig2_dipt <- ggplot(dat_dipt_sum %>%
                        filter(watershed %in% c(5,6)) %>%
@@ -131,9 +142,20 @@ sd(dat_dipt_early_peaks$peak_DOY) # 15
 
 # Export figure.
 # ggsave(plot = fig_dipt,
-#        filename = "figures/emerge_dipt_072225.jpg",
+#        filename = "figures/emerge_dipt_081425.jpg",
 #        width = 45,
 #        height = 22,
 #        units = "cm")
+
+#### Statistics ####
+
+# Calculate mean and variability about annual emergence from W5 & W6.
+dat_dipt_sum56_stats <- dat_dipt_sum %>%
+  filter(watershed %in% c("5", "6")) %>%
+  filter(period == "early") %>%
+  group_by(watershed) %>%
+  summarize(mean_emerge = mean(sum_total_count),
+            sd_emerge = sd(sum_total_count)) %>%
+  ungroup()
 
 # End of script.

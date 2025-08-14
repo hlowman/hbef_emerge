@@ -17,7 +17,7 @@ library(lubridate)
 library(patchwork)
 
 # Load data.
-dat <- readRDS("data_working/sum_annual_dipt_emerge_080725.rds")
+dat <- readRDS("data_working/sum_annual_dipt_emerge_081425.rds")
 flow_dat <- readRDS("data_working/low_high_flow_days_cvQ.rds")
 
 #### Tidy ####
@@ -117,7 +117,7 @@ all_dat_trim <- all_dat %>%
 
 # Export figure.
 # ggsave(plot = fig_flows,
-#        filename = "figures/sum_emerge_flows_080725.jpg",
+#        filename = "figures/sum_emerge_flows_081425.jpg",
 #        width = 60,
 #        height = 18,
 #        units = "cm")

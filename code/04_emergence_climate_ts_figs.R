@@ -8,8 +8,6 @@
 # most/least productive years alongside concurrent stream
 # conditions.
 
-"#1B9E77" "#D95F02" "#7570B3" "#E7298A" "#66A61E" "#E6AB02" "#A6761D"
-
 #### Setup ####
 
 # Load necessary packages.
@@ -20,7 +18,7 @@ library(lubridate)
 library(scales)
 
 # Load data.
-insect_dat <- readRDS("data_working/aquatic_counts_complete_yrs_071825.rds")
+insect_dat <- readRDS("data_working/aquatic_counts_complete_yrs_081425.rds")
 stream_dat <- readRDS("data_working/stream_climate_qchem.rds")
 
 #### Tidy ####
@@ -219,7 +217,7 @@ dat_all <- left_join(stream_dat, dat_dipt,
 
 # Export figure.
 # ggsave(plot = fig_compare1,
-#        filename = "figures/w5_w6_2019_080625.jpg",
+#        filename = "figures/w5_w6_2019_081425.jpg",
 #        width = 30,
 #        height = 30,
 #        units = "cm")
@@ -314,7 +312,7 @@ dat_all <- dat_all %>%
 
 # Export figure.
 # ggsave(plot = fig_compare2,
-#        filename = "figures/w5_20_21_22_080625.jpg",
+#        filename = "figures/w5_20_21_22_081425.jpg",
 #        width = 45,
 #        height = 27,
 #        units = "cm")
@@ -341,7 +339,7 @@ dat_early_peaks <- dat_all %>%
   filter(keep == "Yes") %>%
   drop_na(keep)
 
-mean(dat_early_peaks$temp, na.rm = TRUE) # 10.84
-sd(dat_early_peaks$temp, na.rm = TRUE) # 1.52
+mean(dat_early_peaks$temp, na.rm = TRUE) # 10.85
+sd(dat_early_peaks$temp, na.rm = TRUE) # 1.48
 
 # End of script.

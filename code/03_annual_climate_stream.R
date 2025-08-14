@@ -91,8 +91,7 @@ ppt_metrics_trim <- ppt_metrics %>%
 
 ##### Chem Metrics #####
 
-# Create aggregated chemistry dataset.
-# This is summarized in Table 1.
+# Create aggregated chemistry dataset (reported in Table 1)
 chem_metrics_17onward <- chem_dat %>%
   mutate(month = month(date),
          year = year(date),

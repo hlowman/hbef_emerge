@@ -19,8 +19,8 @@ library(RColorBrewer)
 temp <- readRDS("data_working/stream_temp_daily_W5_W6_2018_2025.rds")
 
 # Load emergence data.
-emerge_dat <- readRDS("data_working/aquatic_counts_complete_yrs_071825.rds")
-peak_dates <- readRDS("data_working/peaks_annual_dipt_emerge_081225.rds")
+emerge_dat <- readRDS("data_working/aquatic_counts_complete_yrs_081425.rds")
+peak_dates <- readRDS("data_working/peaks_annual_dipt_emerge_081425.rds")
 
 #### Tidy ####
 
@@ -168,7 +168,7 @@ dat_deg_days_summary <- dat_deg_days %>%
 
 # Export figure.
 # ggsave(plot = fig_degday_full,
-#        filename = "figures/sum_emerge_degdays_081225.jpg",
+#        filename = "figures/sum_emerge_degdays_081425.jpg",
 #        width = 60,
 #        height = 18,
 #        units = "cm")
