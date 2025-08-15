@@ -18,6 +18,9 @@ library(RColorBrewer)
 # Load temperature data.
 temp <- readRDS("data_working/stream_temp_daily_W5_W6_2018_2025.rds")
 
+# Load historical weekly dataset from EDI.
+chem <- read_csv("data_raw/HubbardBrook_weekly_stream_chemistry_1963-2024.csv")
+
 # Load emergence data.
 emerge_dat <- readRDS("data_working/aquatic_counts_complete_yrs_081425.rds")
 peak_dates <- readRDS("data_working/peaks_annual_dipt_emerge_081425.rds")
@@ -185,7 +188,85 @@ dd_stats <- early_peak_deg_days %>%
   pivot_wider(names_from = watershed, values_from = sum_degree_days) %>%
   mutate(diff = `5` - `6`)
 
-# Examining date of when 10 degrees C is reached historically.
+### Examining date of when 11 degrees C is reached historically. ###
 
+# Note, it appears temperature was not routinely measured until WY1965.
+chem_trim <- chem %>%
+  select(site,date,waterYr,temp) %>%
+  # and filtering only for the reference sites in our study
+  filter(site %in% c("W3","W6"))
+
+# Add columns to delineate DOY when 11 degree threshold was reached.
+chem_trim <- chem_trim %>%
+  mutate(DOY = yday(date),
+         at_above_11 = case_when(temp >= 11 ~ "Yes",
+                                 TRUE ~ "No"))
+
+# And trim this down further to first instances.
+first_over <- chem_trim %>%
+  filter(at_above_11 == "Yes") %>%
+  arrange(date) %>%
+  group_by(site, waterYr) %>%
+  slice_head() %>%
+  ungroup()
+
+# Make a dataset for the first and last 15 years of the record.
+first_over_hist15 <- first_over %>%
+  filter(waterYr %in% c(1965:1980))
+
+first_over_pres15 <- first_over %>%
+  filter(waterYr %in% c(2009:2023))
+
+# And calculate mean dates of reaching 11 degrees.
+mean(first_over_hist15$DOY) # 160.7188
+sd(first_over_hist15$DOY) # 8.160623
+
+mean(first_over_pres15$DOY) # 161.4
+sd(first_over_pres15$DOY) # 6.970875
+
+### Examining maximum temperatures in March for the same periods. ###
+
+# Trim the dataset created above to maximum temperatures in March.
+spring_max <- chem_trim %>%
+  mutate(month = month(date)) %>%
+  filter(month %in% c(3,4,5)) %>%
+  arrange(date) %>%
+  group_by(site, waterYr, month) %>%
+  slice_max(temp, na_rm = TRUE) %>%
+  ungroup()
+
+# Make datasets for the first and last 15 years of the record.
+spring_max_hist15 <- spring_max %>%
+  filter(waterYr %in% c(1965:1980))
+
+spring_max_pres15 <- spring_max %>%
+  filter(waterYr %in% c(2009:2023))
+
+# And calculate mean maximum temperatures for each month.
+spring_max_hist15_summary <- spring_max_hist15 %>%
+  group_by(month) %>%
+  summarize(mean_max = mean(temp, na.rm = TRUE),
+            sd_max = sd(temp, na.rm = TRUE)) %>%
+  mutate(period = "historic")
+
+spring_max_pres15_summary <- spring_max_pres15 %>%
+  group_by(month) %>%
+  summarize(mean_max = mean(temp, na.rm = TRUE),
+            sd_max = sd(temp, na.rm = TRUE)) %>%
+  mutate(period = "present")
+
+# Join the datasets.
+spring_max_summary <- rbind(spring_max_hist15_summary,
+                            spring_max_pres15_summary)
+
+# Plotting for easier visualization.
+ggplot(spring_max_summary,
+       aes(x = factor(month), y = mean_max, color = period)) +
+  geom_point(alpha = 0.7,
+             position = position_jitter(width = 0.2, seed = 123)) +
+  geom_linerange(aes(ymin = mean_max - sd_max,
+                     ymax = mean_max + sd_max),
+                 position = position_jitter(width = 0.2, seed = 123)) +
+  theme_bw()
 
 # End of script.

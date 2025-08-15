@@ -102,26 +102,26 @@ chem_metrics_17onward <- chem_dat %>%
                      "W5", "W6", "W9", "HBK")) %>%
   group_by(site) %>%
   summarize(pH_avg = mean(pH, na.rm = TRUE),
-            ph_5 = quantile(pH, probs = 0.05, na.rm = TRUE),
-            ph_95 = quantile(pH, probs = 0.95, na.rm = TRUE),
+            ph_2.5 = quantile(pH, probs = 0.025, na.rm = TRUE),
+            ph_97.5 = quantile(pH, probs = 0.975, na.rm = TRUE),
             spCond_avg = mean(spCond, na.rm = TRUE),
-            spCond_5 = quantile(spCond, probs = 0.05, na.rm = TRUE),
-            spCond_95 = quantile(spCond, probs = 0.95, na.rm = TRUE),
+            spCond_2.5 = quantile(spCond, probs = 0.025, na.rm = TRUE),
+            spCond_97.5 = quantile(spCond, probs = 0.975, na.rm = TRUE),
             temp_avg = mean(temp, na.rm = TRUE),
-            temp_5 = quantile(temp, probs = 0.05, na.rm = TRUE),
-            temp_95 = quantile(temp, probs = 0.95, na.rm = TRUE),
+            temp_2.5 = quantile(temp, probs = 0.025, na.rm = TRUE),
+            temp_97.5 = quantile(temp, probs = 0.975, na.rm = TRUE),
             NO3_N_avg = mean(NO3_N, na.rm = TRUE),
-            NO3_N_5 = quantile(NO3_N, probs = 0.05, na.rm = TRUE),
-            NO3_N_95 = quantile(NO3_N, probs = 0.95, na.rm = TRUE),
+            NO3_N_2.5 = quantile(NO3_N, probs = 0.025, na.rm = TRUE),
+            NO3_N_97.5 = quantile(NO3_N, probs = 0.975, na.rm = TRUE),
             PO4_avg = mean(PO4, na.rm = TRUE),
-            PO4_5 = quantile(PO4, probs = 0.05, na.rm = TRUE),
-            PO4_95 = quantile(PO4, probs = 0.95, na.rm = TRUE),
+            PO4_2.5 = quantile(PO4, probs = 0.025, na.rm = TRUE),
+            PO4_97.5 = quantile(PO4, probs = 0.975, na.rm = TRUE),
             DOC_avg = mean(DOC, na.rm = TRUE),
-            DOC_5 = quantile(DOC, probs = 0.05, na.rm = TRUE),
-            DOC_95 = quantile(DOC, probs = 0.95, na.rm = TRUE),
+            DOC_2.5 = quantile(DOC, probs = 0.025, na.rm = TRUE),
+            DOC_97.5 = quantile(DOC, probs = 0.975, na.rm = TRUE),
             chla_avg = mean(chla_T, na.rm = TRUE),
-            chla_5 = quantile(chla_T, probs = 0.05, na.rm = TRUE),
-            chla_95 = quantile(chla_T, probs = 0.95, na.rm = TRUE),) %>%
+            chla_2.5 = quantile(chla_T, probs = 0.025, na.rm = TRUE),
+            chla_97.5 = quantile(chla_T, probs = 0.975, na.rm = TRUE),) %>%
   ungroup()
 
 #### Join ####
