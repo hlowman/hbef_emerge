@@ -113,15 +113,14 @@ early_peak_deg_days <- peak_deg_days %>%
   theme_bw() +
   theme(text = element_text(size = 20))) # EEK
 
-# Trying a similar plot but with points instead, filled by
-# magnitude of emergence.
+# Trying a similar plot but with points instead.
 (fig_degday2 <- ggplot(early_peak_deg_days,
-                       aes(x = peak_DOY, y = sum_degree_days,
+                       aes(x = sum_degree_days, y = peak_DOY,
                            color = factor(Year), shape = factor(watershed))) +
     geom_point(size = 10, alpha = 0.75) +
     scale_color_brewer(palette = "Dark2") +
-    labs(x = "Peak Emergence (DOY)",
-         y = "Cumulative Degree Days",
+    labs(x = "Cumulative Degree Days",
+         y = "Peak Emergence (DOY)",
          color = "Year",
          shape = "Watershed") +
     theme_bw() +
@@ -171,7 +170,7 @@ dat_deg_days_summary <- dat_deg_days %>%
 
 # Export figure.
 # ggsave(plot = fig_degday_full,
-#        filename = "figures/sum_emerge_degdays_081425.jpg",
+#        filename = "figures/sum_emerge_degdays_082725.jpg",
 #        width = 60,
 #        height = 18,
 #        units = "cm")
