@@ -58,7 +58,7 @@ temp_hbwater6 <- temp_hbwater %>%
 temp_both <- inner_join(temp_fs6, temp_hbwater6, by = c("TIMESTAMP_15" = "datetime_15")) %>%
   mutate(diff = tempC_FS - tempC_HBWatER)
 
-# Plot stream temperature in W5 as a function of W6.
+# Plot stream temperature.
 ggplot(temp_both, 
        aes(x = tempC_HBWatER,
            y = tempC_FS)) +

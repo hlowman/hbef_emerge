@@ -33,9 +33,9 @@ dat_dipt <- insect_dat %>%
   ungroup()
 
 # Join with stream data.
-dat_all <- left_join(stream_dat, dat_dipt,
-                     by = join_by("WS" == "watershed",
-                                  "DATE" == "Date"))
+dat_all <- full_join(dat_dipt, stream_dat,
+                     by = join_by("watershed" == "WS",
+                                  "Date" == "DATE"))
 
 #### Plot ####
 
@@ -65,11 +65,11 @@ dat_all <- left_join(stream_dat, dat_dipt,
 # dat_manip <- full_join(dat_2019, dat_2018)
 
 (fig_compare1a <- ggplot(dat_all %>%
-                          filter(WS == "5") %>%
-                          filter(DATE < "2020-01-01" &
-                                DATE > "2018-12-31") %>%
+                          filter(watershed == "5") %>%
+                          filter(Date < "2020-01-01" &
+                                Date > "2018-12-31") %>%
                           drop_na(total_count), 
-                         aes(x = DATE, y = total_count)) +
+                         aes(x = Date, y = total_count)) +
   geom_line(linewidth = 1) +
   scale_x_date(date_breaks = "3 month", 
                labels = date_format("%b-%Y"),
@@ -84,11 +84,11 @@ dat_all <- left_join(stream_dat, dat_dipt,
         legend.position = "none"))
 
 (fig_compare1b <- ggplot(dat_all %>%
-                           filter(WS == "6") %>%
-                           filter(DATE < "2020-01-01" &
-                                    DATE > "2018-12-31") %>%
+                           filter(watershed == "6") %>%
+                           filter(Date < "2020-01-01" &
+                                    Date > "2018-12-31") %>%
                            drop_na(total_count), 
-                         aes(x = DATE, y = total_count)) +
+                         aes(x = Date, y = total_count)) +
     geom_line(linewidth = 1) +
     scale_x_date(date_breaks = "3 month", 
                  labels = date_format("%b-%Y"),
@@ -104,10 +104,10 @@ dat_all <- left_join(stream_dat, dat_dipt,
           legend.position = "none"))
 
 (fig_compare1c <- ggplot(dat_all %>%
-                           filter(WS == "5") %>%
-                           filter(DATE < "2020-01-01" &
-                                    DATE > "2018-12-31"),
-                         aes(x = DATE, y = Streamflow)) +
+                           filter(watershed == "5") %>%
+                           filter(Date < "2020-01-01" &
+                                    Date > "2018-12-31"),
+                         aes(x = Date, y = Streamflow)) +
     geom_line(color = "#3793EC", linewidth = 1) +
     scale_x_date(date_breaks = "3 month", 
                  labels = date_format("%b-%Y"),
@@ -121,10 +121,10 @@ dat_all <- left_join(stream_dat, dat_dipt,
           legend.position = "none"))
 
 (fig_compare1d <- ggplot(dat_all %>%
-                           filter(WS == "6") %>%
-                           filter(DATE < "2020-01-01" &
-                                    DATE > "2018-12-31"), 
-                         aes(x = DATE, y = Streamflow)) +
+                           filter(watershed == "6") %>%
+                           filter(Date < "2020-01-01" &
+                                    Date > "2018-12-31"), 
+                         aes(x = Date, y = Streamflow)) +
     geom_line(color = "#3793EC", linewidth = 1) +
     scale_x_date(date_breaks = "3 month", 
                  labels = date_format("%b-%Y"),
@@ -139,11 +139,11 @@ dat_all <- left_join(stream_dat, dat_dipt,
           legend.position = "none"))
 
 (fig_compare1e <- ggplot(dat_all %>%
-                           filter(WS == "5") %>%
-                           filter(DATE < "2020-01-01" &
-                                    DATE > "2018-12-31") %>%
+                           filter(watershed == "5") %>%
+                           filter(Date < "2020-01-01" &
+                                    Date > "2018-12-31") %>%
                            drop_na(temp), 
-                         aes(x = DATE, y = temp)) +
+                         aes(x = Date, y = temp)) +
     geom_line(color = "#D95F02", linewidth = 1) +
     scale_x_date(date_breaks = "3 month", 
                  labels = date_format("%b-%Y"),
@@ -157,11 +157,11 @@ dat_all <- left_join(stream_dat, dat_dipt,
           legend.position = "none"))
 
 (fig_compare1f <- ggplot(dat_all %>%
-                           filter(WS == "6") %>%
-                           filter(DATE < "2020-01-01" &
-                                    DATE > "2018-12-31") %>%
+                           filter(watershed == "6") %>%
+                           filter(Date < "2020-01-01" &
+                                    Date > "2018-12-31") %>%
                            drop_na(temp), 
-                         aes(x = DATE, y = temp)) +
+                         aes(x = Date, y = temp)) +
     geom_line(color = "#D95F02", linewidth = 1) +
     scale_x_date(date_breaks = "3 month", 
                  labels = date_format("%b-%Y"),
@@ -176,11 +176,11 @@ dat_all <- left_join(stream_dat, dat_dipt,
           legend.position = "none"))
 
 (fig_compare1g <- ggplot(dat_all %>%
-                           filter(WS == "5") %>%
-                           filter(DATE < "2020-01-01" &
-                                    DATE > "2018-12-31") %>%
+                           filter(watershed == "5") %>%
+                           filter(Date < "2020-01-01" &
+                                    Date > "2018-12-31") %>%
                            drop_na(chla_T), 
-                         aes(x = DATE, y = chla_T)) +
+                         aes(x = Date, y = chla_T)) +
     geom_line(color = "#66A61E", linewidth = 1) +
     scale_x_date(date_breaks = "3 month", 
                  labels = date_format("%b"),
@@ -192,11 +192,11 @@ dat_all <- left_join(stream_dat, dat_dipt,
           legend.position = "none"))
 
 (fig_compare1h <- ggplot(dat_all %>%
-                           filter(WS == "6") %>%
-                           filter(DATE < "2020-01-01" &
-                                    DATE > "2018-12-31") %>%
+                           filter(watershed == "6") %>%
+                           filter(Date < "2020-01-01" &
+                                    Date > "2018-12-31") %>%
                            drop_na(chla_T), 
-                         aes(x = DATE, y = chla_T)) +
+                         aes(x = Date, y = chla_T)) +
     geom_line(color = "#66A61E", linewidth = 1) +
     scale_x_date(date_breaks = "3 month", 
                  labels = date_format("%b"),
@@ -230,17 +230,17 @@ dat_all <- left_join(stream_dat, dat_dipt,
 # In order to have the lines plot appropriately, I will add a column to
 # group by year.
 dat_all <- dat_all %>%
-  mutate(Year = year(DATE)) %>%
-  mutate(month = month(DATE)) %>%
+  mutate(Year = year(Date)) %>%
+  mutate(month = month(Date)) %>%
   mutate(period = case_when(month < 10 ~ "early",
                             TRUE ~ "late"))
 
 (fig_compare2a <- ggplot(dat_all %>%
-                           filter(WS == "5") %>%
-                           filter(DATE < "2023-01-01" &
-                                    DATE > "2019-12-31") %>%
+                           filter(watershed == "5") %>%
+                           filter(Date < "2023-01-01" &
+                                    Date > "2019-12-31") %>%
                            drop_na(total_count), 
-                         aes(x = DATE, y = total_count,
+                         aes(x = Date, y = total_count,
                              color = period,
                              group = Year)) +
     geom_line(linewidth = 1) +
@@ -256,10 +256,22 @@ dat_all <- dat_all %>%
           legend.position = "none"))
 
 (fig_compare2b <- ggplot(dat_all %>%
-                           filter(WS == "5") %>%
-                           filter(DATE < "2023-01-01" &
-                                    DATE > "2019-12-31"), 
-                         aes(x = DATE, y = Streamflow)) +
+                           filter(watershed == "5") %>%
+                           filter(Date < "2023-01-01" &
+                                    Date > "2019-12-31"), 
+                         aes(x = Date, y = Streamflow)) +
+    geom_hline(aes(yintercept = 0.0440),
+               color = "#7570B3", linewidth = 0.75) + # 10%tile historical flow
+    # geom_hline(aes(yintercept = 1.128),
+    #            color = "#375377", linewidth = 0.75) + # median historical flow
+    geom_hline(aes(yintercept = 22.82592),
+               color = "#8DA0CB", linewidth = 0.75) + # 99%tile historical flow
+    annotate("text", x = ymd("2022-09-01"), y = 10, size = 8,
+             label = "10th", color = "#7570B3") +
+    # annotate("text", x = ymd("2022-09-01"), y = 4, 
+    #          label = "50th", color = "#375377") +
+    annotate("text", x = ymd("2022-09-01"), y = 32, size = 8,
+             label = "99th", color = "#8DA0CB") +
     geom_line(color = "#3793EC", linewidth = 1) +
     scale_x_date(date_breaks = "3 month", 
                  labels = date_format("%b-%Y"),
@@ -271,35 +283,28 @@ dat_all <- dat_all %>%
           text = element_text(size = 20),
           legend.position = "none"))
 
-(fig_compare2c <- ggplot(dat_all %>%
-                           filter(WS == "5") %>%
-                           filter(DATE < "2023-01-01" &
-                                    DATE > "2019-12-31") %>%
-                           drop_na(temp), 
-                         aes(x = DATE, y = temp)) +
-    geom_line(color = "#D95F02", linewidth = 1) +
-    scale_x_date(date_breaks = "3 month", 
-                 labels = date_format("%b-%Y"),
-                 limits = as.Date(c('2020-01-01','2023-01-01'))) +
-    labs(y = "Temperature (°C)") +
-    theme_bw() +
-    theme(axis.title.x = element_blank(),
-          axis.text.x = element_blank(),
-          text = element_text(size = 20),
-          legend.position = "none"))
+# Quickly make a separate dataset with which to calculate cumulative low flow days.
+dat_w5 <- dat_all %>%
+  filter(watershed == "5") %>%
+  mutate(year = year(Date),
+         low_flow_days = ifelse(Streamflow <= 0.0440, 1, 0)) %>%
+  arrange(Date) %>%
+  group_by(year) %>%
+  mutate(sum_low_flow_days = cumsum(low_flow_days)) %>%
+  ungroup()
 
-(fig_compare2d <- ggplot(dat_all %>%
-                           filter(WS == "5") %>%
-                           filter(DATE < "2023-01-01" &
-                                    DATE > "2019-12-31") %>%
-                           drop_na(chla_T), 
-                         aes(x = DATE, y = chla_T,
-                             group = Year)) +
-    geom_line(color = "#66A61E", linewidth = 1) +
+# Figure for cumulative plots of low flow days.
+(fig_compare2c <- ggplot(dat_w5 %>%
+                           filter(Date < "2023-01-01" &
+                                    Date > "2019-12-31"), 
+                         aes(x = Date, y = sum_low_flow_days,
+                             group = year)) +
+    geom_line(color = "#7570B3", linewidth = 1) +
     scale_x_date(date_breaks = "3 month", 
                  labels = date_format("%b-%Y"),
                  limits = as.Date(c('2020-01-01','2023-01-01'))) +
-    labs(x = "Date", y = "chl. a (mg/L)") +
+    labs(y = "Cumulative\nLow Flow Days",
+         x = "Date") +
     theme_bw() +
     theme(text = element_text(size = 20),
           legend.position = "none"))
@@ -307,14 +312,59 @@ dat_all <- dat_all %>%
 # Pulling the first figure together.
 (fig_compare2 <- (fig_compare2a) /
     (fig_compare2b) /
-    (fig_compare2c) /
-    (fig_compare2d))
+    (fig_compare2c) )
 
 # Export figure.
 # ggsave(plot = fig_compare2,
-#        filename = "figures/w5_20_21_22_081425.jpg",
+#        filename = "figures/w5_20_21_22_090125.jpg",
 #        width = 45,
-#        height = 27,
+#        height = 20,
+#        units = "cm")
+
+# And creating a similar plot for W5's full record.
+(fig_compare3a <- ggplot(dat_w5 %>%
+                           filter(Date < "2024-01-01" &
+                                    Date > "2017-12-31") %>%
+                           drop_na(total_count), 
+                         aes(x = Date, y = total_count,
+                             color = period,
+                             group = Year)) +
+    geom_line(linewidth = 1) +
+    scale_color_manual(values = c("black", "gray70")) +
+    scale_x_date(date_breaks = "6 month", 
+                 labels = date_format("%b-%Y"),
+                 limits = as.Date(c('2018-01-01','2024-01-01'))) +
+    labs(y = "Weekly Emergence") +
+    theme_bw() +
+    theme(axis.title.x = element_blank(),
+          axis.text.x = element_blank(),
+          text = element_text(size = 20),
+          legend.position = "none"))
+
+(fig_compare3b <- ggplot(dat_w5 %>%
+                           filter(Date < "2024-01-01" &
+                                    Date > "2017-12-31"), 
+                         aes(x = Date, y = sum_low_flow_days,
+                             group = year)) +
+    geom_line(color = "#7570B3", linewidth = 1) +
+    scale_x_date(date_breaks = "6 month", 
+                 labels = date_format("%b-%Y"),
+                 limits = as.Date(c('2018-01-01','2024-01-01'))) +
+    labs(y = "Cumulative\nLow Flow Days",
+         x = "Date") +
+    theme_bw() +
+    theme(text = element_text(size = 20),
+          legend.position = "none"))
+
+# Pulling the second figure together.
+(fig_compare3 <- (fig_compare3a) /
+    (fig_compare3b))
+
+# Export figure.
+# ggsave(plot = fig_compare3,
+#        filename = "figures/w5_18_thru_24_090125.jpg",
+#        width = 45,
+#        height = 15,
 #        units = "cm")
 
 #### Temp at Peak Emergence ####

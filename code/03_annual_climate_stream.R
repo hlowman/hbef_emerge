@@ -27,13 +27,27 @@ chem_dat <- read_csv("data_raw/HBEFdata_Current_2025-07-18.csv") # Weekly chemis
 ##### Q metrics #####
 
 # Calculate Q percentiles for the full record.
+# Dates when sites came online
+# W1 - 1956
+# W2 - Oct 1957
+# W3 - Oct 1957
+# W4 - July 1960
+# W5 - 1962
+# W6 - 1963
+# W9 - 1995
 q_perc <- q_dat %>%
   group_by(WS) %>%
   summarize(perc10 = quantile(Streamflow,
                               probs = 0.1,
                               na.rm = TRUE),
+            perc50 = quantile(Streamflow,
+                              probs = 0.5,
+                              na.rm = TRUE),
             perc90 = quantile(Streamflow,
                               probs = 0.9,
+                              na.rm = TRUE),
+            perc99 = quantile(Streamflow,
+                              probs = 0.99,
                               na.rm = TRUE)) %>%
   ungroup()
 
@@ -46,7 +60,7 @@ q_metrics <- q_dat %>%
                                 month %in% c(6,7,8,9,10,11,12) ~ year),
          low_flow_day = case_when(Streamflow <= perc10 ~ 1,
                                   TRUE ~ 0),
-         high_flow_day = case_when(Streamflow >= perc90 ~ 1,
+         high_flow_day = case_when(Streamflow >= perc99 ~ 1,
                                    TRUE ~ 0)) %>%
   group_by(WS, water_year) %>%
   summarize(low_flow_days = sum(low_flow_day),
@@ -69,6 +83,24 @@ q_metrics_trim <- q_metrics %>%
   filter(water_year %in% c(2017, 2018, 2019,
                            2020, 2021, 2022,
                            2023, 2024))
+
+# Also calculate peak and cumulative April flows.
+q_april <- q_dat %>%
+  mutate(month = month(DATE),
+         year = year(DATE)) %>%
+  mutate(water_year = case_when(month %in% c(1,2,3,4,5) ~ year-1,
+                                month %in% c(6,7,8,9,10,11,12) ~ year)) %>%
+  filter(month == 4) %>%
+  group_by(WS, water_year) %>%
+  summarize(max_apr_q = max(Streamflow, na.rm = TRUE),
+            sum_apr_q = sum(Streamflow, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(max_apr_q_perc = percent_rank(max_apr_q),
+         sum_apr_q_perc = percent_rank(sum_apr_q))
+
+# Export dataset.
+# saveRDS(q_april,
+#         "data_working/april_flows.rds")
 
 ##### Precip Metrics #####
 
