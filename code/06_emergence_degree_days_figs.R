@@ -13,6 +13,7 @@
 library(here)
 library(tidyverse)
 library(lubridate)
+library(patchwork)
 library(RColorBrewer)
 
 # Load temperature data.
