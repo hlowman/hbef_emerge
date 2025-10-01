@@ -6,7 +6,7 @@
 
 # The following script will create figures to showcase the
 # current and previous years' total emergence as well as 
-# relationships with flow conditions.
+# relationships with flow conditions and chemistry.
 
 #### Setup ####
 
@@ -22,6 +22,7 @@ library(nlme)
 dat <- readRDS("data_working/sum_annual_dipt_emerge_091225.rds") # from 01 script
 flow_dat <- readRDS("data_working/low_high_flow_days_cvQ.rds")
 april_flow_dat <- readRDS("data_working/april_flows.rds")
+chem_dat <- readRDS("data_working/nuts_chla_pH.rds")
 
 #### Tidy ####
 
@@ -42,12 +43,32 @@ dat_wide_ed$watershed <- as.numeric(dat_wide_ed$watershed)
 flow_dat_trim <- flow_dat %>%
   filter(water_year > 2016)
 
-# Join with discharge percentile data.
+# And make corresponding site column for chem dataset.
+chem_dat <- chem_dat %>%
+  mutate(watershed = case_when(site == "W1" ~ 1,
+                               site == "W2" ~ 2,
+                               site == "W3" ~ 3,
+                               site == "W4" ~ 4,
+                               site == "W5" ~ 5,
+                               site == "W6" ~ 6,
+                               site == "W9" ~ 7,
+                               site == "HBK" ~ 0)) %>%
+  # and removing HB to match dataset above
+  filter(watershed > 0)
+
+# Join with discharge data.
 all_dat <- full_join(dat_wide_ed, flow_dat_trim,
                         by = c("watershed" = "WS", "year" = "water_year")) 
 
 all_dat <- left_join(all_dat, april_flow_dat,
-                     by = c("watershed" = "WS", "year" = "water_year")) %>%
+                     by = c("watershed" = "WS", "year" = "water_year")) 
+
+# Join with chemistry data.
+all_dat <- full_join(all_dat, chem_dat,
+                     by = c("watershed", "year" = "water_year")) 
+
+# And format for lagged columns.
+all_dat <- all_dat %>%
   arrange(watershed, year) %>% # make sure years are in order
   group_by(watershed) %>%
   mutate(prev_low_flow_days = lag(low_flow_days),
@@ -58,7 +79,11 @@ all_dat <- left_join(all_dat, april_flow_dat,
          prev_cv_q_perc = lag(cv_q_perc),
          prev_sum_apr_q_perc = lag(sum_apr_q_perc),
          prev_max_apr_q = lag(max_apr_q),
-         prev_max_apr_q_perc = lag(max_apr_q_perc)) %>%
+         prev_max_apr_q_perc = lag(max_apr_q_perc),
+         prev_low_pH_days = lag(low_pH_days),
+         prev_no3 = lag(mean_NO3),
+         prev_po4 = lag(mean_PO4),
+         prev_chla = lag(mean_chla)) %>%
   mutate(low_color = case_when(prev_low_flow_perc >= 0.9 ~ "above90perc",
                                TRUE ~ "below90perc"),
          high_color = case_when(prev_high_flow_perc >= 0.9 ~ "above90perc",
@@ -279,5 +304,87 @@ ggsave(plot = fig_flows_alt,
        width = 40,
        height = 35,
        units = "cm")
+
+##### pH #####
+
+# Plot emergence relationship versus pH deviations
+(fig_pH <- ggplot(all_dat_trim,
+                       aes(x = prev_low_pH_days, 
+                           y = sum_total_count,
+                           color = factor(year),
+                           shape = factor(watershed))) +
+   geom_point(size = 7) +
+   labs(y = "Total Aq. Diptera Emergence",
+        x = "Prior Year Low pH Days",
+        shape = "Watershed",
+        color = "Year") +
+   scale_color_brewer(palette = "Dark2") +
+   theme_bw() +
+   theme(text = element_text(size = 20),
+         legend.position = "none"))
+
+##### Algae #####
+
+# Plot emergence relationship versus chlorophyll a concentrations
+(fig_chla <- ggplot(all_dat_trim,
+                  aes(x = prev_chla, 
+                      y = sum_total_count,
+                      color = factor(year),
+                      shape = factor(watershed))) +
+   geom_point(size = 7) +
+   labs(y = "Total Aq. Diptera Emergence",
+        x = "Prior Year Mean Chlorophyll a",
+        shape = "Watershed",
+        color = "Year") +
+   scale_color_brewer(palette = "Dark2") +
+   theme_bw() +
+   theme(text = element_text(size = 20),
+         legend.position = "right"))
+
+##### Nitrate #####
+
+# Plot emergence relationship versus nitrate concentrations
+(fig_NO3 <- ggplot(all_dat_trim,
+                    aes(x = prev_no3, 
+                        y = sum_total_count,
+                        color = factor(year),
+                        shape = factor(watershed))) +
+   geom_point(size = 7) +
+   labs(y = "Total Aq. Diptera Emergence",
+        x = "Prior Year Mean Nitrate",
+        shape = "Watershed",
+        color = "Year") +
+   scale_color_brewer(palette = "Dark2") +
+   theme_bw() +
+   theme(text = element_text(size = 20),
+         legend.position = "none"))
+
+##### Phosphate #####
+
+# Plot emergence relationship versus nitrate concentrations
+(fig_PO4 <- ggplot(all_dat_trim,
+                   aes(x = prev_po4, 
+                       y = sum_total_count,
+                       color = factor(year),
+                       shape = factor(watershed))) +
+   geom_point(size = 7) +
+   labs(y = "Total Aq. Diptera Emergence",
+        x = "Prior Year Mean Phosphate",
+        shape = "Watershed",
+        color = "Year") +
+   scale_color_brewer(palette = "Dark2") +
+   theme_bw() +
+   theme(text = element_text(size = 20),
+         legend.position = "none"))
+
+(fig_chem <- fig_NO3 + fig_PO4 + fig_pH + fig_chla +
+    plot_annotation(tag_levels = "A"))
+
+# Export figures.
+# ggsave(plot = fig_chem,
+#        filename = "figures/sum_emerge_chem_100125.jpg",
+#        width = 40,
+#        height = 35,
+#        units = "cm")
 
 # End of script.
