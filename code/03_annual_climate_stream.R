@@ -156,6 +156,57 @@ chem_metrics_17onward <- chem_dat %>%
             chla_97.5 = quantile(chla_T, probs = 0.975, na.rm = TRUE),) %>%
   ungroup()
 
+# Create unaggregated chemistry dataset for use in figures.
+# First, need calculate average and sd pH values for sites.
+site_pH <- chem_dat %>%
+  select(site, date, pH) %>%
+  filter(date > "2017-05-31") %>%
+  group_by(site) %>%
+  summarize(mean_pH = mean(pH, na.rm = TRUE),
+            sd_pH = sd(pH, na.rm = TRUE))
+
+# And append this data to calculate instances of acidic conditions.
+low_pH_events <- chem_dat %>%
+    mutate(month = month(date),
+           year = year(date)) %>%
+    mutate(water_year = case_when(month %in% c(1,2,3,4,5) ~ year-1,
+                                  month %in% c(6,7,8,9,10,11,12) ~ year)) %>%
+    filter(water_year > 2016) %>%
+    filter(site %in% c("W1", "W2", "W3", "W4", 
+                       "W5", "W6", "W9", "HBK")) %>%
+    group_by(site, date) %>%
+    summarize(daily_pH = mean(pH, na.rm = TRUE)) %>%
+    ungroup() %>%
+    left_join(site_pH) %>%
+    mutate(low_pH = case_when(daily_pH < (mean_pH - sd_pH) ~ 1,
+                            TRUE ~ 0)) %>%
+    mutate(month = month(date),
+           year = year(date)) %>%
+    mutate(water_year = case_when(month %in% c(1,2,3,4,5) ~ year-1,
+                                  month %in% c(6,7,8,9,10,11,12) ~ year)) %>%
+    group_by(site, water_year) %>%
+    summarize(low_pH_days = sum(low_pH)) %>%
+    ungroup()
+
+chem_metrics <- chem_dat %>%
+  mutate(month = month(date),
+         year = year(date),
+         water_year = case_when(month %in% c(1,2,3,4,5) ~ year-1,
+                                month %in% c(6,7,8,9,10,11,12) ~ year)) %>%
+  filter(water_year > 2016) %>%
+  filter(site %in% c("W1", "W2", "W3", "W4", 
+                     "W5", "W6", "W9", "HBK")) %>%
+  group_by(site, water_year) %>%
+  summarize(mean_NO3 = mean(NO3_N, na.rm = TRUE),
+            mean_PO4 = mean(PO4, na.rm = TRUE),
+            mean_chla = mean(chla_T, na.rm = TRUE)) %>%
+  ungroup() %>%
+  full_join(low_pH_events)
+
+# Export dataset.
+# saveRDS(chem_metrics,
+#         "data_working/nuts_chla_pH.rds")
+
 #### Join ####
 
 # Trim Q dataset to years and sites of interest.
