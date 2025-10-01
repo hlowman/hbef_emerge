@@ -34,7 +34,8 @@ dat_dipt <- insect_dat %>%
   mutate(month = month(Date))
 
 # The stream data doesn't always perfectly align with the
-# insect collections, so using the previous measurement.
+# insect collections, so using the previous measurement of
+# temperature here.
 stream_dat_filled <- stream_dat %>%
   fill(temp)
 
@@ -42,6 +43,24 @@ stream_dat_filled <- stream_dat %>%
 dat_all <- full_join(dat_dipt, stream_dat_filled,
                      by = join_by("watershed" == "WS",
                                   "Date" == "DATE"))
+
+# Also, need to calculate flow duration curves by year.
+flow_dat <- stream_dat %>%
+  select(WS, DATE, Streamflow) %>%
+  mutate(Year = year(DATE))
+
+curves5 <- data.frame()
+
+for(i in c(2017:2024)){
+  yearly_curve <- flow_dat %>%
+    filter(WS == 5) %>%
+    filter(Year == i) %>%
+    arrange(desc(Streamflow)) %>%
+    mutate(rank = row_number(),
+           exceedance_perc = (rank / (n() + 1)) * 100)
+    
+  curves5 <- rbind(curves5, yearly_curve)
+}
 
 #### Plot ####
 
@@ -237,9 +256,7 @@ dat_all <- full_join(dat_dipt, stream_dat_filled,
 # group by year.
 dat_all <- dat_all %>%
   mutate(Year = year(Date)) %>%
-  mutate(month = month(Date)) %>%
-  mutate(period = case_when(month < 10 ~ "early",
-                            TRUE ~ "late"))
+  mutate(month = month(Date))
 
 (fig_compare2a <- ggplot(dat_all %>%
                            filter(watershed == "5") %>%
@@ -247,10 +264,8 @@ dat_all <- dat_all %>%
                                     Date > "2019-12-31") %>%
                            drop_na(total_count), 
                          aes(x = Date, y = total_count,
-                             color = period,
                              group = Year)) +
     geom_line(linewidth = 1) +
-    scale_color_manual(values = c("black", "gray70")) +
     scale_x_date(date_breaks = "3 month", 
                  labels = date_format("%b-%Y"),
                  limits = as.Date(c('2020-01-01','2023-01-01'))) +
@@ -284,9 +299,7 @@ dat_all <- dat_all %>%
                  limits = as.Date(c('2020-01-01','2023-01-01'))) +
     labs(y = "Q (mm/day)") +
     theme_bw() +
-    theme(axis.title.x = element_blank(),
-          axis.text.x = element_blank(),
-          text = element_text(size = 20),
+    theme(text = element_text(size = 20),
           legend.position = "none"))
 
 # Quickly make a separate dataset with which to calculate cumulative low flow days.
@@ -315,16 +328,31 @@ dat_w5 <- dat_all %>%
     theme(text = element_text(size = 20),
           legend.position = "none"))
 
+# Figure with flow duration curves by year.
+(fig_compare_fd <- ggplot(curves5 %>%
+                            filter(DATE < "2023-01-01" &
+                                     DATE > "2019-12-31"), 
+                          aes(x = exceedance_perc, 
+                              y = Streamflow)) +
+    geom_line(color = "#7570B3", linewidth = 1) +
+    #scale_y_log10(breaks=c(.01,.1,1,10,100),labels=c(.01,.1,1,10,100)) +
+    labs(x = "Percent Time Flow Exceeded",
+         y = "Q (mm/day)") +
+    facet_grid(.~Year) +
+    theme_bw() +
+    theme(text = element_text(size = 20)))
+
 # Pulling the first figure together.
 (fig_compare2 <- (fig_compare2a) /
     (fig_compare2b) /
-    (fig_compare2c) )
+    (fig_compare_fd) ) +
+  plot_annotation(tag_levels = "A")
 
 # Export figure.
 # ggsave(plot = fig_compare2,
-#        filename = "figures/w5_20_21_22_090125.jpg",
+#        filename = "figures/w5_20_21_22_100125.jpg",
 #        width = 45,
-#        height = 20,
+#        height = 25,
 #        units = "cm")
 
 # And creating a similar plot for W5's full record.
