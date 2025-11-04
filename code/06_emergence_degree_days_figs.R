@@ -15,6 +15,7 @@ library(tidyverse)
 library(lubridate)
 library(patchwork)
 library(RColorBrewer)
+library(nlme)
 
 # Load temperature data.
 temp <- readRDS("data_working/stream_temp_daily_W5_W6_2018_2025.rds")
@@ -125,7 +126,7 @@ early_peak_deg_days <- peak_deg_days %>%
          color = "Year",
          shape = "Watershed") +
     theme_bw() +
-    theme(text = element_text(size = 20)))
+    theme(text = element_text(size = 20))) # Ok much better.
 
 # And add summary plots of cumulative degree days in either watershed.
 dat_deg_days_summary <- dat_deg_days %>%
@@ -177,6 +178,37 @@ dat_deg_days_summary <- dat_deg_days %>%
 #        units = "cm")
 
 #### Statistics ####
+
+##### LMEM #####
+# Peak DOY vs. degree days
+hist(early_peak_deg_days$sum_degree_days)
+hist(early_peak_deg_days$peak_DOY)
+# look fairly normally distributed given the small sample size
+
+# Simple linear regression
+dd.lm1 <- lm(peak_DOY ~ sum_degree_days, data = early_peak_deg_days)
+summary(dd.lm1)
+plot(dd.lm1) # again, looks alright considering low SS
+# Re-fit with gls to compare better with lmem() function
+dd.lm2 <- gls(peak_DOY ~ sum_degree_days, data = early_peak_deg_days)
+# Fit multi-level model to account for site-level variation
+dd.lm3 <- lme(peak_DOY ~ sum_degree_days,
+                 random = ~1|watershed,
+                 data = early_peak_deg_days %>%
+                   mutate(watershed = factor(watershed)))
+# Compare the two model structures
+AIC(dd.lm2, dd.lm3) # essentially identical
+# Examine residuals
+plot(dd.lm3)
+qqnorm(dd.lm3) # look fine considering SS
+# Summary of multi-level model 
+summary(dd.lm3)
+
+##### Historic Temp #####
+
+# Mean temp at peak emergence dates in W5 & W6
+mean(early_peak_deg_days$TempC) # 11.52
+sd(early_peak_deg_days$TempC) # 2.28
 
 # Examining difference in 5 & 6 for peak dates and cumulative degree days.
 doy_stats <- early_peak_deg_days %>%
