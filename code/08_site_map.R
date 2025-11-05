@@ -88,11 +88,37 @@ weirs_trim <- weirs %>%
 # And set to proper coordinate reference system
 streamlines_crs <- st_set_crs(streamlines, 26919)
 
+# Create a label dataset
+watershed = c("W1", "W2", "W3", "W4",
+              "W5", "W6", "W9", "HB")
+
+labels_df <- as.data.frame(watershed) 
+
+labels <- data.frame(name = c("W1", "W2", "W3", "W4",
+                              "W5", "W6", "W9", "HB"),
+                     x = c(281600.1, 281800.1, 281764.1, 281204.1,
+                           280714.1, 280264.1, 279508.3, 283200.1),
+                     y = c(4870106, 4870316, 4870666, 4869716,
+                           4869566, 4869766, 4867600, 4869000)) %>% 
+  st_as_sf(coords = c("x", "y"), crs = 26919) 
+
+# And a HB weir
+HB <- data.frame(x = c(283200.1), y = c(4868700)) %>% 
+  st_as_sf(coords = c("x", "y"), crs = 26919) 
+
+# Create data sf object from original dataframe
+labels_sf <- st_as_sf(labels_df,
+                   coords = c("lon", "lat"),
+                   remove = F,
+                   crs = 26919) # WGS 84 projection
+
+# Base plot to see how things are looking...
+plot(labels_sf$geometry)
+
 # The c3t1 palette from above
 hypso.colors2(20, palette = "c3t1", alpha = 1, rev = FALSE)
 "#89B994" "#D5E2C4" "#F4F3C8" "#FFF8C7" "#FFF0C5" "#FFEDBE" "#FFE9B7" "#FFE6B1" "#FFE2AB"
-[10] "#FFDFA5" "#FFDB9F" "#FFD899" "#FFD594" "#FFD390" "#FFD390" "#FFD390" "#FFD390" "#FFD390"
-[19] "#FFD390" "#FFD390"
+[10] "#FFDFA5" "#FFDB9F" "#FFD899" "#FFD594" "#FFD390" "#FFD390" "#FFD390" "#FFD390" "#FFD390" "#FFD390" "#FFD390"
 
 # Basic plot to be sure it's working
 (hb_fig <- ggplot() +
@@ -106,7 +132,12 @@ hypso.colors2(20, palette = "c3t1", alpha = 1, rev = FALSE)
   geom_sf(data = ws6, fill = NA, color = "black") +
   geom_sf(data = ws9, fill = NA, color = "black") +
   geom_sf(data = weirs_trim, color = "black") +
-  theme_bw())
+  geom_sf(data = HB, color = "black") +
+  geom_sf_text(data = labels, aes(label = name),
+               size = 4) +
+  theme_bw() +
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank()))
 
 # Join figures together.
 (full_map <- nh_fig + hb_fig +
@@ -115,7 +146,7 @@ hypso.colors2(20, palette = "c3t1", alpha = 1, rev = FALSE)
 # Export figure.
 ggsave(plot = full_map,
        filename = "figures/HB_valley_map_110425.jpg",
-       width = 20,
+       width = 25,
        height = 10,
        units = "cm")
 
