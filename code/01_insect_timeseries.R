@@ -481,11 +481,11 @@ dat_dipt_plotting <- full_join(dat_dipt_plotting, dat_dipt_sum,
 #        height = 20,
 #        units = "cm")
 
-ggsave(plot = fig_peak_xy,
-       filename = "figures/emerge_peak_xy_110425.jpg",
-       width = 40,
-       height = 17,
-       units = "cm")
+# ggsave(plot = fig_peak_xy,
+#        filename = "figures/emerge_peak_xy_110425.jpg",
+#        width = 40,
+#        height = 17,
+#        units = "cm")
 
 #### Statistics ####
 

@@ -156,8 +156,8 @@ summary(emerge.lm3)
 
 # Plot emergence relationship versus low flows
 (fig_low <- ggplot(all_dat_trim,
-                   aes(x = prev_early, 
-                       y = early,
+                   aes(x = prev_emerge, 
+                       y = sum_total_count,
                        fill = prev_low_flow_perc)) +
    geom_point(size = 7, shape = 21) +
    labs(y = "Total Aq. Diptera Emergence",
@@ -175,7 +175,7 @@ summary(emerge.lm3)
                        y = sum_total_count,
                        color = factor(year),
                        shape = factor(watershed))) +
-    geom_point(size = 7) +
+    geom_point(size = 10, alpha = 0.75) +
     labs(y = "Total Aq. Diptera Emergence",
          x = "Prior Year Low Flow Days",
          shape = "Watershed",
@@ -313,15 +313,14 @@ ggsave(plot = fig_flows_alt,
                            y = sum_total_count,
                            color = factor(year),
                            shape = factor(watershed))) +
-   geom_point(size = 7) +
+   geom_point(size = 10, alpha = 0.75) +
    labs(y = "Total Aq. Diptera Emergence",
         x = "Prior Year Low pH Days",
         shape = "Watershed",
         color = "Year") +
    scale_color_brewer(palette = "Dark2") +
    theme_bw() +
-   theme(text = element_text(size = 20),
-         legend.position = "none"))
+   theme(text = element_text(size = 20)))
 
 ##### Algae #####
 
@@ -386,5 +385,66 @@ ggsave(plot = fig_flows_alt,
 #        width = 40,
 #        height = 35,
 #        units = "cm")
+
+(fig_disc <- fig_low_alt + fig_pH +
+    plot_annotation(tag_levels = "A"))
+
+# Export figures.
+# ggsave(plot = fig_disc,
+#        filename = "figures/sum_emerge_low_pH_110525.jpg",
+#        width = 40,
+#        height = 17,
+#        units = "cm")
+
+#### Statistics ####
+
+## 1 ## Annual emergence vs. low flow days the previous year
+hist(all_dat_trim$prev_low_flow_days) # explored a log transformation
+# and addition of small value to 0s so as not to create Infs/NaNs
+# but residuals from lmem appear better with raw values
+hist(all_dat_trim$sum_total_count) # appears roughly normally distributed
+
+# Simple linear regression
+annual.lm1 <- lm(sum_total_count ~ prev_low_flow_days, data = all_dat_trim)
+summary(annual.lm1)
+plot(annual.lm1) # again, looks alright considering low SS
+# Re-fit with gls to compare better with lmem() function
+annual.lm2 <- gls(sum_total_count ~ prev_low_flow_days, data = all_dat_trim)
+# Fit multi-level model to account for site-level variation
+annual.lm3 <- lme(sum_total_count ~ prev_low_flow_days,
+                random = ~1|watershed,
+                data = all_dat_trim %>%
+                  mutate(watershed = factor(watershed)))
+# Compare the two model structures
+AIC(annual.lm2, annual.lm3) # identical
+# Examine residuals
+plot(annual.lm3)
+qqnorm(annual.lm3)
+# Summary of multi-level model 
+summary(annual.lm3)
+
+## 2 ## Annual emergence vs. low pH days the previous year
+hist(all_dat_trim$prev_low_pH_days) # needs a log transformation
+hist(log(all_dat_trim$prev_low_pH_days)) # alright
+hist(all_dat_trim$sum_total_count) # appears roughly normally distributed
+
+# Simple linear regression
+annual2.lm1 <- lm(sum_total_count ~ log(prev_low_pH_days), data = all_dat_trim)
+summary(annual2.lm1)
+plot(annual2.lm1) # again, looks alright considering low SS
+# Re-fit with gls to compare better with lmem() function
+annual2.lm2 <- gls(sum_total_count ~ log(prev_low_pH_days), data = all_dat_trim)
+# Fit multi-level model to account for site-level variation
+annual2.lm3 <- lme(sum_total_count ~ log(prev_low_pH_days),
+                  random = ~1|watershed,
+                  data = all_dat_trim %>%
+                    mutate(watershed = factor(watershed)))
+# Compare the two model structures
+AIC(annual2.lm2, annual2.lm3) # also identical
+# Examine residuals
+plot(annual2.lm3)
+qqnorm(annual2.lm3)
+# Summary of multi-level model 
+summary(annual2.lm3)
 
 # End of script.
