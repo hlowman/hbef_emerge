@@ -127,6 +127,10 @@ dat_deg_days_rolling <- dat_deg_days_trim %>%
                                  fill = NA)) %>%
   ungroup()
 
+# And add these to the original datasets for figures below.
+dat_deg_days <- full_join(dat_deg_days, dat_deg_days_rolling)
+peak_deg_days <- left_join(peak_deg_days, dat_deg_days_rolling)
+
 #### Plot ####
 
 # First, trying a plot to demonstrate variation in peak emergence dates
@@ -177,10 +181,10 @@ dat_deg_days_summary <- dat_deg_days %>%
 (fig_degday3 <- ggplot(dat_deg_days_summary,
                        aes(x = DOY)) +
     geom_line(aes(y = sum_deg_days_0.50), 
-              linewidth = 1, color = "#F28705") +
+              linewidth = 1, color = "#3793EC") +
     geom_ribbon(aes(ymin = sum_deg_days_0.025,
                     ymax = sum_deg_days_0.975),
-                fill = "#F28705",
+                fill = "#3793EC",
                 alpha = 0.2) +
     labs(x = "DOY",
          y = "Cumulative Degree Days") +
@@ -215,15 +219,56 @@ ggplot(dat_deg_days_rolling,
   facet_grid(watershed~Year) +
   theme_bw()
 
+# Plot rolling 7-day slope vs weekly emergence
+# start with 1 year.
+(fig_slope <- ggplot(dat_deg_days %>%
+                       filter(Year == 2024),
+       aes(x = slope_7day, 
+           y = total_count,
+           color = DOY)) +
+  geom_point(size = 5) +
+  scale_color_gradientn(colors = c("white",
+                                   "#FFAA00", 
+                                   "#632D1F")) +
+  labs(x = "7-day Degree Day Slope",
+       y = "Weekly Count of\nAquatic Diptera") +
+  facet_grid(watershed~.) +
+  theme_bw() +
+  theme(text = element_text(size = 20)))
+
 # Combine these three to describe phenology of degree days and emergence.
-(fig_degday_full <- (fig_degday3 + fig_degday4 + #fig_degday2 +
+(fig_degday_full <- (fig_degday3 + fig_degday4 + fig_slope +
                       plot_annotation(tag_levels = "A")))
 
 # Export figure.
 # ggsave(plot = fig_degday_full,
-#        filename = "figures/sum_emerge_degdays_082725.jpg",
-#        width = 60,
-#        height = 18,
+#        filename = "figures/sum_emerge_degdays_111225.jpg",
+#        width = 50,
+#        height = 15,
+#        units = "cm")
+
+# Also make the remaining years for the slope figure.
+# Plot rolling 7-day slope vs weekly emergence
+# start with 1 year.
+(fig_slope_full <- ggplot(dat_deg_days,
+                     aes(x = slope_7day, 
+                         y = total_count,
+                         color = DOY)) +
+    geom_point(size = 5) +
+    scale_color_gradientn(colors = c("white",
+                                     "#FFAA00", 
+                                     "#632D1F")) +
+    labs(x = "7-day Degree Day Slope",
+         y = "Weekly Count of\nAquatic Diptera") +
+    facet_grid(watershed~Year) +
+    theme_bw() +
+    theme(text = element_text(size = 20)))
+
+# Export figure.
+# ggsave(plot = fig_slope_full,
+#        filename = "figures/emerge_slope_degdays_111225.jpg",
+#        width = 50,
+#        height = 15,
 #        units = "cm")
 
 #### Statistics ####
@@ -262,6 +307,10 @@ sd(early_peak_deg_days$TempC) # 2.28
 # Mean DD at peak emergence dates in W5 & W6
 mean(early_peak_deg_days$sum_degree_days) # 127.4874
 sd(early_peak_deg_days$sum_degree_days) # 50.686865
+
+# Mean slope of DD at peak emergence dates in W5 & W6
+mean(early_peak_deg_days$slope_7day) # 6.756599
+sd(early_peak_deg_days$slope_7day) # 2.121083
 
 # Examining difference in 5 & 6 for peak dates and cumulative degree days.
 doy_stats <- early_peak_deg_days %>%
