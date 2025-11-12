@@ -16,6 +16,7 @@ library(lubridate)
 library(patchwork)
 library(RColorBrewer)
 library(nlme)
+library(zoo)
 
 # Load temperature data.
 temp <- readRDS("data_working/stream_temp_daily_W5_W6_2018_2025.rds")
@@ -92,6 +93,40 @@ dat_deg_days_trim <- dat_deg_days %>%
 peak_deg_days <- left_join(peak_dates_56, dat_deg_days_trim,
                            by = c("watershed", "Year", "date"))
 
+# Also, calculate total seasonal degree days 
+# to investigate a relationship with total emergence
+dat_deg_days_ann <- dat_deg_days_trim %>%
+  group_by(watershed, Year) %>%
+  summarize(sum_ann_dd = max(sum_degree_days),
+            sum_ann_emerge = max(sum_emergence)) %>%
+  ungroup()
+
+# Write function for extracting slope
+slope_fun <- function(d) {
+  
+  df <- as.data.frame(d)
+  
+  model <- lm(sum_degree_days ~ DOY, df)
+  
+  coeff <- coef(model)
+  
+  slope <- coeff[2]
+  
+  return(slope)
+  
+}
+
+# Also, calculate slope changes based on 7-day
+# rolling average
+dat_deg_days_rolling <- dat_deg_days_trim %>%
+  group_by(watershed, Year) %>%
+  mutate(slope_7day = rollapplyr(pick(sum_degree_days, DOY),
+                                 width = 7,
+                                 FUN = slope_fun,
+                                 by.column = FALSE,
+                                 fill = NA)) %>%
+  ungroup()
+
 #### Plot ####
 
 # First, trying a plot to demonstrate variation in peak emergence dates
@@ -153,21 +188,35 @@ dat_deg_days_summary <- dat_deg_days %>%
     theme_bw() +
     theme(text = element_text(size = 20)))
 
-(fig_degday4 <- ggplot(dat_deg_days_summary,
+# Need to trim data to appear reasonable given sticky trap
+# deployment dates.
+dat_deg_days_summary_trim <- dat_deg_days_summary %>%
+  filter(DOY > 79) %>% # when values begin to change
+  filter(DOY < 334) # when values stop changing
+
+(fig_degday4 <- ggplot(dat_deg_days_summary_trim,
                        aes(x = DOY)) +
     geom_line(aes(y = sum_emerge_0.50),
               linewidth = 1) +
     geom_ribbon(aes(ymin = sum_emerge_0.025,
                     ymax = sum_emerge_0.975),
                 alpha = 0.2) +
+    xlim(0, 365) +
     labs(x = "DOY",
          y = "Cumulative Emergence") +
     facet_grid(watershed~.) +
     theme_bw() +
     theme(text = element_text(size = 20)))
 
+# Plot rolling 7-day slope by site and year.
+ggplot(dat_deg_days_rolling,
+       aes(x = DOY, y = slope_7day)) +
+  geom_line() +
+  facet_grid(watershed~Year) +
+  theme_bw()
+
 # Combine these three to describe phenology of degree days and emergence.
-(fig_degday_full <- (fig_degday3 + fig_degday4 + fig_degday2 +
+(fig_degday_full <- (fig_degday3 + fig_degday4 + #fig_degday2 +
                       plot_annotation(tag_levels = "A")))
 
 # Export figure.
@@ -209,6 +258,10 @@ summary(dd.lm3)
 # Mean temp at peak emergence dates in W5 & W6
 mean(early_peak_deg_days$TempC) # 11.52
 sd(early_peak_deg_days$TempC) # 2.28
+
+# Mean DD at peak emergence dates in W5 & W6
+mean(early_peak_deg_days$sum_degree_days) # 127.4874
+sd(early_peak_deg_days$sum_degree_days) # 50.686865
 
 # Examining difference in 5 & 6 for peak dates and cumulative degree days.
 doy_stats <- early_peak_deg_days %>%
@@ -292,13 +345,26 @@ spring_max_summary <- rbind(spring_max_hist15_summary,
                             spring_max_pres15_summary)
 
 # Plotting for easier visualization.
-ggplot(spring_max_summary,
-       aes(x = factor(month), y = mean_max, color = period)) +
-  geom_point(alpha = 0.7,
-             position = position_jitter(width = 0.2, seed = 123)) +
-  geom_linerange(aes(ymin = mean_max - sd_max,
-                     ymax = mean_max + sd_max),
-                 position = position_jitter(width = 0.2, seed = 123)) +
-  theme_bw()
+(fig_hist <- ggplot(spring_max_summary,
+                  aes(x = factor(month), 
+                      y = mean_max, 
+                      fill = period)) +
+    geom_linerange(aes(ymin = mean_max - sd_max,
+                       ymax = mean_max + sd_max),
+                   position = position_dodge(width = 0.5)) +
+  geom_point(shape = 21, size = 5,
+             position = position_dodge(width = 0.5)) +
+  scale_fill_manual(values = c("black", "white")) +
+  labs(x = "Month",
+       y = "Mean Maximum Temperature (°C)",
+       fill = "Period") +
+  theme_bw())
+
+# Export figure.
+# ggsave(plot = fig_hist,
+#        filename = "figures/spring_temps_111125.jpg",
+#        width = 12,
+#        height = 10,
+#        units = "cm")
 
 # End of script.

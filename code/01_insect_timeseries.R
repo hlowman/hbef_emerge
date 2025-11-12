@@ -120,7 +120,10 @@ dat_annual_sum <- dat_order %>%
   filter(keep == "Y") %>%
   group_by(watershed, year) %>%
   summarize(sum_total_count = sum(replace_na(total_count, 0))) %>%
-  ungroup()
+  ungroup() %>%
+  # and make additional column for borders
+  mutate(border = case_when(year %in% c(2018, 2019, 2020) ~ 1.5,
+                            year %in% c(2021, 2022, 2023, 2024) ~ 0.25))
 
 ##### Black flies ####
 
@@ -196,28 +199,32 @@ dat_dipt_plotting <- full_join(dat_dipt_plotting, dat_dipt_sum,
 # Pasting color scheme colors here for future reference
 "#1B9E77" "#D95F02" "#7570B3" "#E7298A" "#66A61E" "#E6AB02" "#A6761D"
 "#66C2A5" "#FC8D62" "#8DA0CB" "#E78AC3" "#A6D854" "#FFD92F" "#E5C494"
+"#F7FCF5" "#E5F5E0" "#C7E9C0" "#A1D99B" "#74C476" "#41AB5D" "#238B45" "#005A32"
+"#FCFBFD" "#EFEDF5" "#DADAEB" "#BCBDDC" "#9E9AC8" "#807DBA" "#6A51A3" "#4A1486"
 
 ##### Annual Metrics ####
 
 # Figure showing annual counts of all orders
 (fig1_annual_sum <- ggplot(dat_annual_sum, 
                            aes(x = watershed, 
-                               y = sum_total_count)) +
-    #geom_boxplot(linewidth = 0.75, width = 0.4) +
-    geom_jitter(size = 5, shape = 21, 
-                width = 0.1, alpha = 0.8,
-                aes(fill = factor(year))) +
+                               y = sum_total_count,
+                               fill = factor(year),
+                               stroke = border)) +
+    geom_point(size = 5, shape = 21, 
+              position = position_dodge(width = 0.3)) +
     labs(y = "Annual Total Count",
          x = "Watershed",
          fill = "Year") +
-    scale_fill_brewer(palette = "Dark2") +
+    scale_fill_manual(values = c("#005A32", "#41AB5D", "#A1D99B",
+                                 "grey80", "#9E9AC8", "#6A51A3",
+                                 "#4A1486")) +
     theme_bw() +
     theme(text = element_text(size = 20)))
 
 # Export figure.
 # ggsave(plot = fig1_annual_sum,
-#        filename = "figures/emerge_annual_110325.jpg",
-#        width = 40,
+#        filename = "figures/emerge_annual_111125.jpg",
+#        width = 30,
 #        height = 10,
 #        units = "cm")
 
@@ -434,9 +441,13 @@ dat_dipt_plotting <- full_join(dat_dipt_plotting, dat_dipt_sum,
 (fig_peak_xy <- ggplot(dat_dipt_plotting %>%
                          filter(watershed %in% c(5, 6)),
                        aes(x = peak_DOY, y = total_count,
-                           color = factor(year), shape = factor(watershed))) +
-    geom_point(size = 10, alpha = 0.75) +
-    scale_color_brewer(palette = "Dark2") +
+                           color = factor(year), 
+                           shape = factor(watershed))) +
+    geom_point(size = 10, stroke = 2) +
+    scale_color_manual(values = c("#005A32", "#41AB5D", "#A1D99B",
+                                 "grey80", "#9E9AC8", "#6A51A3",
+                                 "#4A1486")) +
+    scale_shape_manual(values = c(16, 21)) +
     labs(y = "Peak Aquatic\nDiptera Emergence",
          x = "Spring Peak DOY") +
     theme_bw() +
@@ -457,9 +468,13 @@ dat_dipt_plotting <- full_join(dat_dipt_plotting, dat_dipt_sum,
 (fig_annual_xy <- ggplot(dat_dipt_plotting %>%
                            filter(watershed %in% c(5,6)),
                          aes(x = total_count, y = sum_total_count,
-                             color = factor(year), shape = factor(watershed))) +
-    geom_point(size = 10, alpha = 0.75) +
-    scale_color_brewer(palette = "Dark2") +
+                             color = factor(year), 
+                             shape = factor(watershed))) +
+    geom_point(size = 10, stroke = 2) +
+    scale_color_manual(values = c("#005A32", "#41AB5D", "#A1D99B",
+                                 "grey80", "#9E9AC8", "#6A51A3",
+                                 "#4A1486")) +
+    scale_shape_manual(values = c(16, 21)) +
     labs(y = "Annual Total Count\nof Aquatic Diptera",
          x = "Peak Aquatic\nDiptera Emergence",
          color = "Year",
@@ -482,7 +497,7 @@ dat_dipt_plotting <- full_join(dat_dipt_plotting, dat_dipt_sum,
 #        units = "cm")
 
 # ggsave(plot = fig_peak_xy,
-#        filename = "figures/emerge_peak_xy_110425.jpg",
+#        filename = "figures/emerge_peak_xy_111125.jpg",
 #        width = 40,
 #        height = 17,
 #        units = "cm")
