@@ -254,7 +254,7 @@ ggplot(dat_deg_days_rolling,
                      aes(x = slope_7day, 
                          y = total_count,
                          color = DOY)) +
-    geom_point(size = 5) +
+    geom_point(size = 4) +
     scale_color_gradientn(colors = c("white",
                                      "#FFAA00", 
                                      "#632D1F")) +
@@ -266,9 +266,9 @@ ggplot(dat_deg_days_rolling,
 
 # Export figure.
 # ggsave(plot = fig_slope_full,
-#        filename = "figures/emerge_slope_degdays_111225.jpg",
-#        width = 50,
-#        height = 15,
+#        filename = "figures/emerge_slope_degdays_111825.jpg",
+#        width = 30,
+#        height = 10,
 #        units = "cm")
 
 #### Statistics ####
