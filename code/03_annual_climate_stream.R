@@ -7,7 +7,8 @@
 # The following script will aggregate existing records to
 # describe statistics regarding climate, chemistry, and streamflow.
 
-# It will also generate an aggregated dataset for stream climate.
+# It will also generate an aggregated dataset for stream climate,
+# and summary statistics for Supplementary Table 1.
 
 #### Setup ####
 
@@ -155,6 +156,30 @@ chem_metrics_17onward <- chem_dat %>%
             chla_2.5 = quantile(chla_T, probs = 0.025, na.rm = TRUE),
             chla_97.5 = quantile(chla_T, probs = 0.975, na.rm = TRUE),) %>%
   ungroup()
+
+# Create stream temperature only dataset (reported in Supp. Table 1)
+temp_17onward <- chem_dat %>%
+  mutate(month = month(date),
+         year = year(date),
+         water_year = case_when(month %in% c(1,2,3,4,5) ~ year-1,
+                          month %in% c(6,7,8,9,10,11,12) ~ year)) %>%
+  filter(water_year >= 2017) %>%
+  filter(site %in% c("W1", "W2", "W3", "W4", 
+                     "W5", "W6", "W9", "HBK")) %>%
+  group_by(site, water_year) %>%
+  summarize(temp_avg = mean(temp, na.rm = TRUE),
+            temp_2.5 = quantile(temp, 
+                                probs = 0.025, na.rm = TRUE),
+            temp_97.5 = quantile(temp, 
+                                 probs = 0.975, na.rm = TRUE)) %>%
+  ungroup()
+
+# And trim down to sites and years of interest.
+temp_metrics_trim <- temp_17onward %>%
+  filter(site %in% c("W5","W6")) %>%
+  filter(water_year %in% c(2017, 2018, 2019,
+                           2020, 2021, 2022,
+                           2023, 2024))
 
 # Create unaggregated chemistry dataset for use in figures.
 # First, need calculate average and sd pH values for sites.
