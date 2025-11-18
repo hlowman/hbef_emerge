@@ -111,22 +111,25 @@ all_dat_trim <- all_dat %>%
 (fig_emerge <- ggplot(all_dat_trim,
                        aes(x = prev_emerge, 
                            y = sum_total_count,
-                           color = factor(year),
+                           color = factor(year), 
                            shape = factor(watershed))) +
-   geom_point(size = 7) +
+   geom_point(size = 10, stroke = 2) +
+   scale_color_manual(values = c("#005A32", "#41AB5D", "#A1D99B",
+                                 "grey80", "#9E9AC8", "#6A51A3",
+                                 "#4A1486")) +
+   scale_shape_manual(values = c(16, 21)) +
    labs(y = "Total Aq. Diptera Emergence",
         x = "Prior Year Aq. Diptera Emergence",
         shape = "Watershed",
         color = "Year") +
-   scale_color_brewer(palette = "Dark2") +
    theme_bw() +
    theme(text = element_text(size = 20),
          legend.position = "right"))
 
 # ggsave(plot = fig_emerge,
-#        filename = "figures/sum_emerge_100125.jpg",
+#        filename = "figures/sum_emerge_111825.jpg",
 #        width = 20,
-#        height = 17,
+#        height = 14,
 #        units = "cm")
 
 # And linear regression to examine effect of prior yr's emergence.
@@ -173,14 +176,17 @@ summary(emerge.lm3)
 (fig_low_alt <- ggplot(all_dat_trim,
                    aes(x = prev_low_flow_days, 
                        y = sum_total_count,
-                       color = factor(year),
+                       color = factor(year), 
                        shape = factor(watershed))) +
-    geom_point(size = 10, alpha = 0.75) +
+    geom_point(size = 10, stroke = 2) +
+    scale_color_manual(values = c("#005A32", "#41AB5D", "#A1D99B",
+                                  "grey80", "#9E9AC8", "#6A51A3",
+                                  "#4A1486")) +
+    scale_shape_manual(values = c(16, 21)) +
     labs(y = "Total Aq. Diptera Emergence",
          x = "Prior Year Low Flow Days",
          shape = "Watershed",
          fill = "Year") +
-    scale_color_brewer(palette = "Dark2") +
     theme_bw() +
     theme(text = element_text(size = 20),
           legend.position = "none"))
@@ -311,14 +317,17 @@ ggsave(plot = fig_flows_alt,
 (fig_pH <- ggplot(all_dat_trim,
                        aes(x = prev_low_pH_days, 
                            y = sum_total_count,
-                           color = factor(year),
+                           color = factor(year), 
                            shape = factor(watershed))) +
-   geom_point(size = 10, alpha = 0.75) +
+   geom_point(size = 10, stroke = 2) +
+   scale_color_manual(values = c("#005A32", "#41AB5D", "#A1D99B",
+                                 "grey80", "#9E9AC8", "#6A51A3",
+                                 "#4A1486")) +
+   scale_shape_manual(values = c(16, 21)) +
    labs(y = "Total Aq. Diptera Emergence",
         x = "Prior Year Low pH Days",
         shape = "Watershed",
         color = "Year") +
-   scale_color_brewer(palette = "Dark2") +
    theme_bw() +
    theme(text = element_text(size = 20)))
 
@@ -386,12 +395,12 @@ ggsave(plot = fig_flows_alt,
 #        height = 35,
 #        units = "cm")
 
-(fig_disc <- fig_low_alt + fig_pH +
+(fig_supp <- fig_low_alt + fig_pH +
     plot_annotation(tag_levels = "A"))
 
 # Export figures.
-# ggsave(plot = fig_disc,
-#        filename = "figures/sum_emerge_low_pH_110525.jpg",
+# ggsave(plot = fig_supp,
+#        filename = "figures/sum_emerge_low_pH_111825.jpg",
 #        width = 40,
 #        height = 17,
 #        units = "cm")
