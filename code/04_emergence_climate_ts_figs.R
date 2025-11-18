@@ -266,10 +266,10 @@ dat_all <- dat_all %>%
                          aes(x = Date, y = total_count,
                              group = Year)) +
     geom_line(linewidth = 1) +
-    scale_x_date(date_breaks = "3 month", 
+    scale_x_date(date_breaks = "6 month", 
                  labels = date_format("%b-%Y"),
                  limits = as.Date(c('2020-01-01','2023-01-01'))) +
-    labs(y = "Weekly Emergence") +
+    labs(y = "Weekly Aq. Diptera\nEmergence") +
     theme_bw() +
     theme(axis.title.x = element_blank(),
           axis.text.x = element_blank(),
@@ -294,10 +294,10 @@ dat_all <- dat_all %>%
     annotate("text", x = ymd("2022-09-01"), y = 32, size = 8,
              label = "99th", color = "#8DA0CB") +
     geom_line(color = "#3793EC", linewidth = 1) +
-    scale_x_date(date_breaks = "3 month", 
+    scale_x_date(date_breaks = "6 month", 
                  labels = date_format("%b-%Y"),
                  limits = as.Date(c('2020-01-01','2023-01-01'))) +
-    labs(y = "Q (mm/day)") +
+    labs(y = "Discharge\n(mm/day)") +
     theme_bw() +
     theme(text = element_text(size = 20),
           legend.position = "none"))
@@ -319,7 +319,7 @@ dat_w5 <- dat_all %>%
                          aes(x = Date, y = sum_low_flow_days,
                              group = year)) +
     geom_line(color = "#7570B3", linewidth = 1) +
-    scale_x_date(date_breaks = "3 month", 
+    scale_x_date(date_breaks = "6 month", 
                  labels = date_format("%b-%Y"),
                  limits = as.Date(c('2020-01-01','2023-01-01'))) +
     labs(y = "Cumulative\nLow Flow Days",
@@ -337,7 +337,7 @@ dat_w5 <- dat_all %>%
     geom_line(color = "#7570B3", linewidth = 1) +
     #scale_y_log10(breaks=c(.01,.1,1,10,100),labels=c(.01,.1,1,10,100)) +
     labs(x = "Percent Time Flow Exceeded",
-         y = "Q (mm/day)") +
+         y = "Discharge\n(mm/day)") +
     facet_grid(.~Year) +
     theme_bw() +
     theme(text = element_text(size = 20)))
@@ -350,8 +350,8 @@ dat_w5 <- dat_all %>%
 
 # Export figure.
 # ggsave(plot = fig_compare2,
-#        filename = "figures/w5_20_21_22_100125.jpg",
-#        width = 45,
+#        filename = "figures/w5_20_21_22_111825.jpg",
+#        width = 35,
 #        height = 25,
 #        units = "cm")
 
@@ -425,35 +425,5 @@ dat_early_peaks <- dat_all %>%
 
 mean(dat_early_peaks$temp, na.rm = TRUE) # 10.93
 sd(dat_early_peaks$temp, na.rm = TRUE) # 1.79
-
-# And finally, generate a figure to add to the supplement.
-# Note, this drops 52 records due to lack of data available
-# for WY24 in 5&6 at this time.
-(fig_about_peak <- ggplot(dat_all %>% 
-                           mutate(keep = case_when(duplicate == "Dup" ~ "No",
-                                                   watershed == 1 & year %in% c(2018,2019,2020) |
-                                                     watershed == 2 & year %in% c(2018,2019,2020) |
-                                                     watershed == 3 & year %in% c(2018,2019,2020) |
-                                                     watershed == 4 & year %in% c(2018,2019,2020) |
-                                                     watershed == 5 & year %in% c(2018,2019, 2020,
-                                                                                  2021, 2022, 2023, 2024) |
-                                                     watershed == 6 & year %in% c(2018,2019, 2020,
-                                                                                  2021, 2022, 2023, 2024) |
-                                                     watershed == 9 & year %in% c(2018,2019,2020) ~ "Yes",
-                                                   TRUE ~ NA)) %>%
-                           filter(keep == "Yes"),
-                         aes(x = temp, y = total_count)) +
-  geom_point(shape = 21, size = 3) +
-  labs(x = "Daytime Temperature (°C)",
-       y = "Weekly Aquatic Diptera Emergence") +
-  theme_bw() +
-  theme(text = element_text(size = 20)))
-
-# Export figure.
-# ggsave(plot = fig_about_peak,
-#        filename = "figures/temp_about_peak_091625.jpg",
-#        width = 16,
-#        height = 14,
-#        units = "cm")
 
 # End of script.
