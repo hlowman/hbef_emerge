@@ -18,6 +18,7 @@ library(sf)
 library(ggspatial)
 library(tigris)
 library(tidyterra)
+library(terra)
 library(elevatr)
 library(nhdplusTools)
 library(mapview)
@@ -59,8 +60,8 @@ nh_trimmed <- mask(nh_cropped, nh_sf)
   geom_spatraster(data = nh_trimmed, aes(fill = slope)) +
   scale_fill_hypso_c(palette = "c3t1") +
   geom_sf(data = nh_sf, fill = NA, color = "black") +
-  geom_sf(data = hb_boundary, fill = NA, color = "red",
-          linewidth = 1) +
+  geom_sf(data = hb_boundary, fill = NA, color = "black",
+          linewidth = 0.8) +
   theme_bw() +
   theme(legend.position = "none"))
 
@@ -94,7 +95,7 @@ watershed = c("W1", "W2", "W3", "W4",
 
 labels_df <- as.data.frame(watershed) 
 
-labels <- data.frame(name = c("W1", "W2", "W3", "W4",
+labels_df <- data.frame(name = c("W1", "W2", "W3", "W4",
                               "W5", "W6", "W9", "HB"),
                      x = c(281600.1, 281800.1, 281764.1, 281204.1,
                            280714.1, 280264.1, 279508.3, 283200.1),
@@ -145,7 +146,7 @@ hypso.colors2(20, palette = "c3t1", alpha = 1, rev = FALSE)
 
 # Export figure.
 ggsave(plot = full_map,
-       filename = "figures/HB_valley_map_110425.jpg",
+       filename = "figures/HB_valley_map_111425.jpg",
        width = 25,
        height = 10,
        units = "cm")
