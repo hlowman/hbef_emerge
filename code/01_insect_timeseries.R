@@ -240,18 +240,18 @@ dat_dipt_plotting <- full_join(dat_dipt_plotting, dat_dipt_sum,
                            aes(x = Date, 
                                y = cv_count_ed,
                                group = interaction(Order, year))) +
-    geom_line(size = 1, alpha = 0.8,
+    geom_line(linewidth = 1, alpha = 0.8,
               aes(color = order_f)) +
     labs(y = "Weekly Coefficient of\nVariation",
          x = "Date",
          color = "Order") +
     scale_color_manual(values = c("dipteran" = "#FFAA00",
-                                  "stonefly" = "#69B9FA", 
-                                  "caddisfly" = "#4B8FF7", 
-                                  "mayfly" = "#6B6D9F"),
+                                  "stonefly" = "#D46F10", 
+                                  "caddisfly" = "#A99CD9", 
+                                  "mayfly" = "#654783"),
                        labels = c("dipteran" = "Diptera", 
-                                  "stonefly" = "Trichoptera", 
-                                  "caddisfly" = "Plecoptera", 
+                                  "caddisfly" = "Trichoptera", 
+                                  "stonefly" = "Plecoptera", 
                                   "mayfly" = "Ephemeroptera")) +
     theme_bw() +
     theme(text = element_text(size = 20)) +
@@ -259,24 +259,35 @@ dat_dipt_plotting <- full_join(dat_dipt_plotting, dat_dipt_sum,
 
 # Export figure.
 # ggsave(plot = fig_weekly_cv56,
-#        filename = "figures/cv_weekly56_110425.jpg",
+#        filename = "figures/cv_weekly56_112425.jpg",
 #        width = 40,
 #        height = 10,
 #        units = "cm")
 
 # Figure showing time series of all orders
 (fig1_all <- ggplot(dat_order %>%
-                       filter(watershed %in% c(5,6)), aes(x = Date, 
-                                                          y = total_count,
-                                                          group = year,
-                                                          color = Order)) +
+                       mutate(order_f = factor(Order,
+                                              levels = c("dipteran",
+                                                         "caddisfly",
+                                                         "stonefly",
+                                                         "mayfly"))) %>%
+                       filter(watershed %in% c(5,6)), 
+                    aes(x = Date, y = total_count,
+                        group = year, color = order_f)) +
    geom_line(linewidth = 1) +
    scale_x_continuous(
      breaks = seq.Date(as.Date("2018-01-01"), 
                        as.Date("2024-12-31"), 
                        by = "1 year"),
      labels = ~ format(.x, "%Y")) +
-   scale_color_manual(values = c("#FFAA00","#69B9FA","#4B8FF7","#6B6D9F")) +
+    scale_color_manual(values = c("dipteran" = "#FFAA00",
+                                  "stonefly" = "#D46F10", 
+                                  "caddisfly" = "#A99CD9", 
+                                  "mayfly" = "#654783"),
+                       labels = c("dipteran" = "Diptera", 
+                                  "caddisfly" = "Trichoptera", 
+                                  "stonefly" = "Plecoptera", 
+                                  "mayfly" = "Ephemeroptera")) +
    labs(y = "Weekly Count") +
    facet_grid(Order~watershed, 
               labeller = labeller(
@@ -294,7 +305,7 @@ dat_dipt_plotting <- full_join(dat_dipt_plotting, dat_dipt_sum,
 
 # Export figure.
 # ggsave(plot = fig1_all,
-#        filename = "figures/emerge_all_110425.jpg",
+#        filename = "figures/emerge_all_112425.jpg",
 #        width = 40,
 #        height = 20,
 #        units = "cm")
@@ -503,6 +514,20 @@ dat_dipt_plotting <- full_join(dat_dipt_plotting, dat_dipt_sum,
 #        units = "cm")
 
 #### Statistics ####
+
+# Estimate % of dipterans counted in W5 and W6
+dat_perc <- dat_order %>%
+  pivot_wider(names_from = Order, values_from = total_count) %>%
+  mutate(total = dipteran + caddisfly + stonefly + mayfly) %>%
+  group_by(watershed, year) %>%
+  summarize(tot_dipt = sum(dipteran),
+            tot_all = sum(total)) %>%
+  ungroup() %>%
+  filter(watershed %in% c(5,6)) %>%
+  summarize(all_dipt = sum(tot_dipt),
+            all = sum(tot_all)) %>%
+  mutate(perc = all_dipt/all)
+  
 
 # Estimate range
 dat_dipt_plotting <- dat_dipt_plotting %>%

@@ -125,7 +125,7 @@ ppt_metrics_trim <- ppt_metrics %>%
 ##### Chem Metrics #####
 
 # Create aggregated chemistry dataset (reported in Table 1)
-chem_metrics_17onward <- chem_dat %>%
+chem_metrics_18onward <- chem_dat %>%
   mutate(month = month(date),
          year = year(date),
          water_year = case_when(month %in% c(1,2,3,4,5) ~ year-1,
@@ -152,9 +152,9 @@ chem_metrics_17onward <- chem_dat %>%
             DOC_avg = mean(DOC, na.rm = TRUE),
             DOC_2.5 = quantile(DOC, probs = 0.025, na.rm = TRUE),
             DOC_97.5 = quantile(DOC, probs = 0.975, na.rm = TRUE),
-            chla_avg = mean(chla_T, na.rm = TRUE),
-            chla_2.5 = quantile(chla_T, probs = 0.025, na.rm = TRUE),
-            chla_97.5 = quantile(chla_T, probs = 0.975, na.rm = TRUE),) %>%
+            chla_avg = mean(chla_M, na.rm = TRUE),
+            chla_2.5 = quantile(chla_M, probs = 0.025, na.rm = TRUE),
+            chla_97.5 = quantile(chla_M, probs = 0.975, na.rm = TRUE),) %>%
   ungroup()
 
 # Create stream temperature only dataset (reported in Supp. Table 1)
