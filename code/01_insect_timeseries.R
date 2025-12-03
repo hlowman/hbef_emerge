@@ -43,12 +43,17 @@ dat_cv_order <- dat %>%
   ungroup() %>%
   # and now calculate weekly C.V. for plotting
   mutate(cv_count = sd_count/mean_count) %>%
-  # and add modified column for plotting
-  mutate(cv_count_ed = ifelse(is.na(cv_count), 0, cv_count))
+  # and add modified columns for plotting
+  mutate(cv_count_ed = ifelse(is.na(cv_count), 0, cv_count),
+         sd_count_ed = ifelse(is.na(sd_count), 0, sd_count),
+         mean_count_ed = ifelse(is.nan(mean_count), 0, mean_count)) %>%
+  # and create additional columns for ribbons
+  mutate(min = ifelse(mean_count_ed - sd_count_ed < 0, 
+                      0, mean_count_ed - sd_count_ed),
+         max = mean_count_ed + sd_count_ed)
 
 # And calculate annual-level CV
 dat_cv_annual <- dat_cv_order %>%
-  #filter(year < 2021) %>%
   group_by(watershed, Order) %>%
   # first, remove missing values
   filter(!is.na(cv_count)) %>%
@@ -85,25 +90,6 @@ dat_annual_stats_56 <- dat_order %>%
   filter(keep == "Y") %>%
   # and finally summarize by order
   group_by(Order) %>%
-  summarize(mean_annual = mean(sum_total_count),
-            sd_annual = sd(sum_total_count)) %>%
-  ungroup()
-
-# Calculate mean annual emergence across all taxa and sites
-dat_annual_stats_all <- dat_order %>%
-  group_by(watershed, year) %>%
-  summarize(sum_total_count = sum(replace_na(total_count,0))) %>%
-  ungroup() %>%
-  # and impose manuscript data filters
-  mutate(keep = case_when(watershed %in% c("5","6") & 
-                            year %in% c(2018, 2019, 2020, 2021, 2022, 2023, 2024) |
-                            watershed %in% c("1","2", "3","4", "9", "HBK") &
-                            year %in% c(2018, 2019, 2020) ~ "Y",
-                          TRUE ~ "N")) %>%
-  # and impose filter
-  filter(keep == "Y") %>%
-  # and finally summarize by WS
-  group_by(watershed) %>%
   summarize(mean_annual = mean(sum_total_count),
             sd_annual = sd(sum_total_count)) %>%
   ungroup()
@@ -159,7 +145,7 @@ dat_dipt_sum <- dat_dipt %>%
 
 # Summary statistics of annual dipteran emergence.
 dat_dipt_stat <- dat_dipt_sum %>%
-  group_by(watershed, period) %>%
+  group_by(watershed) %>%
   summarize(mean_total = mean(sum_total_count),
             sd_total = sd(sum_total_count)) %>%
   ungroup()
@@ -204,26 +190,41 @@ dat_dipt_plotting <- full_join(dat_dipt_plotting, dat_dipt_sum,
 
 ##### Annual Metrics ####
 
+dat_annual_sum <- dat_annual_sum %>%
+  mutate(watershed_f = factor(case_when(watershed == "1" ~ "W1",
+                                        watershed == "2" ~ "W2",
+                                        watershed == "3" ~ "W3",
+                                        watershed == "4" ~ "W4",
+                                        watershed == "5" ~ "W5",
+                                        watershed == "6" ~ "W6",
+                                        watershed == "9" ~ "W9",
+                                        watershed == "HBK" ~ "HBK"),
+                              levels = c("W1", "W2", "W3",
+                                         "W4", "W5", "W6",
+                                         "W9", "HBK")))
+
 # Figure showing annual counts of all orders
 (fig1_annual_sum <- ggplot(dat_annual_sum, 
-                           aes(x = watershed, 
+                           aes(x = factor(year), 
                                y = sum_total_count,
-                               fill = factor(year),
-                               stroke = border)) +
-    geom_point(size = 5, shape = 21, 
+                               color = factor(year),
+                               shape = watershed_f)) +
+    geom_point(size = 5, stroke = 1.5,
               position = position_dodge(width = 0.3)) +
+    scale_color_manual(values = c("#005A32", "#41AB5D", "#A1D99B",
+                                 "grey70", "#9E9AC8", "#6A51A3",
+                                 "#4A1486"),
+                      guide = "none") +
+    scale_shape_manual(values = c(15, 22, 17, 24, 16, 21, 18, 23)) +
     labs(y = "Annual Total Count",
-         x = "Watershed",
-         fill = "Year") +
-    scale_fill_manual(values = c("#005A32", "#41AB5D", "#A1D99B",
-                                 "grey80", "#9E9AC8", "#6A51A3",
-                                 "#4A1486")) +
+         x = "Year",
+         shape = "Site") +
     theme_bw() +
     theme(text = element_text(size = 20)))
 
 # Export figure.
 # ggsave(plot = fig1_annual_sum,
-#        filename = "figures/emerge_annual_111125.jpg",
+#        filename = "figures/emerge_annual_120325.jpg",
 #        width = 30,
 #        height = 10,
 #        units = "cm")
@@ -240,8 +241,7 @@ dat_dipt_plotting <- full_join(dat_dipt_plotting, dat_dipt_sum,
                            aes(x = Date, 
                                y = cv_count_ed,
                                group = interaction(Order, year))) +
-    geom_line(linewidth = 1, alpha = 0.8,
-              aes(color = order_f)) +
+    geom_line(linewidth = 2, aes(color = order_f)) +
     labs(y = "Weekly Coefficient of\nVariation",
          x = "Date",
          color = "Order") +
@@ -254,15 +254,68 @@ dat_dipt_plotting <- full_join(dat_dipt_plotting, dat_dipt_sum,
                                   "stonefly" = "Plecoptera", 
                                   "mayfly" = "Ephemeroptera")) +
     theme_bw() +
-    theme(text = element_text(size = 20)) +
-    facet_grid(watershed~.))
+    theme(text = element_text(size = 40),
+          strip.background = element_blank(),
+          legend.position = "none") +
+    facet_grid(Order~watershed, 
+               labeller = labeller(
+                 watershed = c('5'="Watershed 5",
+                               '6'="Watershed 6"),
+                 Order = c('dipteran'="Diptera",
+                           'mayfly'="Ephemeroptera",
+                           'stonefly'="Plecoptera",
+                           'caddisfly'="Trichoptera"))))
 
 # Export figure.
 # ggsave(plot = fig_weekly_cv56,
-#        filename = "figures/cv_weekly56_112425.jpg",
-#        width = 40,
-#        height = 10,
+#        filename = "figures/cv_weekly56_120325.jpg",
+#        width = 70,
+#        height = 35,
 #        units = "cm")
+
+# Figure showing time series of meand +- s.d. values
+# for W5 & W6 only
+(fig_weekly_ms56 <- ggplot(dat_cv_order %>%
+                             mutate(order_f = factor(Order,
+                                                     levels = c("dipteran",
+                                                                "caddisfly",
+                                                                "stonefly",
+                                                                "mayfly"))) %>%
+                             filter(watershed %in% c(5,6)), 
+                           aes(x = Date, 
+                               y = mean_count_ed,
+                               group = interaction(Order, year))) +
+    geom_line(linewidth = 0.75, alpha = 0.9,
+              aes(color = order_f)) +
+    geom_ribbon(aes(ymin = min, ymax = max,
+                    fill = order_f), alpha = 0.4) +
+    labs(y = "Weekly Mean Count per Trap",
+         x = "Date",
+         color = "Order") +
+    scale_color_manual(values = c("dipteran" = "#FFAA00",
+                                  "stonefly" = "#D46F10", 
+                                  "caddisfly" = "#A99CD9", 
+                                  "mayfly" = "#654783"),
+                       labels = c("dipteran" = "Diptera", 
+                                  "caddisfly" = "Trichoptera", 
+                                  "stonefly" = "Plecoptera", 
+                                  "mayfly" = "Ephemeroptera")) +
+    scale_fill_manual(values = c("dipteran" = "#FFAA00",
+                                  "stonefly" = "#D46F10", 
+                                  "caddisfly" = "#A99CD9", 
+                                  "mayfly" = "#654783"),
+                      guide = "none") +
+    theme_bw() +
+    theme(text = element_text(size = 20)) +
+    facet_grid(Order~watershed, 
+               labeller = labeller(
+                 watershed = c('5'="Watershed 5",
+                               '6'="Watershed 6"),
+                 Order = c('dipteran'="Diptera",
+                           'mayfly'="Ephemeroptera",
+                           'stonefly'="Plecoptera",
+                           'caddisfly'="Trichoptera")),
+               scales = "free"))
 
 # Figure showing time series of all orders
 (fig1_all <- ggplot(dat_order %>%
@@ -274,7 +327,7 @@ dat_dipt_plotting <- full_join(dat_dipt_plotting, dat_dipt_sum,
                        filter(watershed %in% c(5,6)), 
                     aes(x = Date, y = total_count,
                         group = year, color = order_f)) +
-   geom_line(linewidth = 1) +
+   geom_line(linewidth = 2) +
    scale_x_continuous(
      breaks = seq.Date(as.Date("2018-01-01"), 
                        as.Date("2024-12-31"), 
@@ -299,15 +352,15 @@ dat_dipt_plotting <- full_join(dat_dipt_plotting, dat_dipt_sum,
                           'caddisfly'="Trichoptera")),
               scales = "free") +
    theme_bw() +
-   theme(text = element_text(size = 20),
+   theme(text = element_text(size = 40),
          strip.background = element_blank(),
          legend.position = "none"))
 
 # Export figure.
 # ggsave(plot = fig1_all,
-#        filename = "figures/emerge_all_112425.jpg",
-#        width = 40,
-#        height = 20,
+#        filename = "figures/emerge_all_120325.jpg",
+#        width = 70,
+#        height = 35,
 #        units = "cm")
 
 # Figure showing only EPT taxa time series (for SI)
@@ -514,6 +567,75 @@ dat_dipt_plotting <- full_join(dat_dipt_plotting, dat_dipt_sum,
 #        units = "cm")
 
 #### Statistics ####
+
+##### Annual Metrics #####
+
+# Regression to investigate effect of year and site on total emergence
+
+# Examine variables
+hist(dat_annual_sum$sum_total_count) # looks ok
+ggplot(dat_annual_sum, aes(x = watershed_f,
+                           y = sum_total_count)) +
+  geom_jitter() +
+  theme_bw()
+ggplot(dat_annual_sum, aes(x = factor(year),
+                           y = sum_total_count)) +
+  geom_jitter() +
+  theme_bw()
+
+# Not worried about correlations here, so just need
+# to make all possible covariates factors.
+dat_annual_sum <- dat_annual_sum %>%
+  mutate(year_f = factor(year))
+
+annual.lm1 <- lm(sum_total_count ~ year_f + watershed_f,
+                 data = dat_annual_sum)
+
+# Examine residuals
+plot(annual.lm1) # look good!
+
+# Examine results
+summary(annual.lm1)
+
+# Calculate mean annual emergence across all taxa and sites
+dat_site_stats_all <- dat_order %>%
+  group_by(watershed, year) %>%
+  summarize(sum_total_count = sum(replace_na(total_count,0))) %>%
+  ungroup() %>%
+  # and impose manuscript data filters
+  mutate(keep = case_when(watershed %in% c("5","6") & 
+                            year %in% c(2018, 2019, 2020, 2021, 2022, 2023, 2024) |
+                            watershed %in% c("1","2", "3","4", "9", "HBK") &
+                            year %in% c(2018, 2019, 2020) ~ "Y",
+                          TRUE ~ "N")) %>%
+  # and impose filter
+  filter(keep == "Y") %>%
+  # and finally summarize by WS
+  group_by(watershed) %>%
+  summarize(mean_annual = mean(sum_total_count),
+            sd_annual = sd(sum_total_count)) %>%
+  ungroup() %>%
+  mutate(cv_annual = sd_annual/mean_annual)
+
+# and flipping this to be by year
+dat_annual_stats_all <- dat_order %>%
+  group_by(watershed, year) %>%
+  summarize(sum_total_count = sum(replace_na(total_count,0))) %>%
+  ungroup() %>%
+  # and impose manuscript data filters
+  mutate(keep = case_when(watershed %in% c("5","6") & 
+                            year %in% c(2018, 2019, 2020, 2021, 2022, 2023, 2024) |
+                            watershed %in% c("1","2", "3","4", "9", "HBK") &
+                            year %in% c(2018, 2019, 2020) ~ "Y",
+                          TRUE ~ "N")) %>%
+  # and impose filter
+  filter(keep == "Y") %>%
+  # and finally summarize by WS
+  group_by(year) %>%
+  summarize(mean_annual = mean(sum_total_count),
+            sd_annual = sd(sum_total_count)) %>%
+  ungroup() %>%
+  mutate(cv_annual = sd_annual/mean_annual)
 
 # Estimate % of dipterans counted in W5 and W6
 dat_perc <- dat_order %>%
