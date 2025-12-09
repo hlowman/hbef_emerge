@@ -19,7 +19,7 @@ library(scales)
 library(nlme)
 
 # Load data.
-dat <- readRDS("data_working/aquatic_counts_complete_yrs_081425.rds")
+dat <- readRDS("data_working/aquatic_counts_complete_yrs_120925.rds")
 
 #### Tidy ####
 
@@ -67,15 +67,7 @@ dat_annual_wide <- dat_order %>%
   summarize(sum_total_count = sum(replace_na(total_count,0))) %>%
   ungroup() %>%
   pivot_wider(names_from = group,
-              values_from = sum_total_count) %>%
-  # and impose manuscript data filters
-  mutate(keep = case_when(watershed %in% c("5","6") & 
-                            year %in% c(2018, 2019, 2020, 2021, 2022, 2023, 2024) |
-                            watershed %in% c("1","2", "3","4", "9", "HBK") &
-                            year %in% c(2018, 2019, 2020) ~ "Y",
-                          TRUE ~ "N")) %>%
-  # and impose filter
-  filter(keep == "Y")
+              values_from = sum_total_count)
 
 # Calculate mean annual emergence for separate taxa in W5 & W6
 dat_annual_stats_56 <- dat_order %>%
@@ -83,8 +75,7 @@ dat_annual_stats_56 <- dat_order %>%
   summarize(sum_total_count = sum(replace_na(total_count,0))) %>%
   ungroup() %>%
   # and impose W5 & W6 data filters
-  mutate(keep = case_when(watershed %in% c("5","6") & 
-                            year %in% c(2018, 2019, 2020, 2021, 2022, 2023, 2024) ~ "Y",
+  mutate(keep = case_when(watershed %in% c("5","6") ~ "Y",
                           TRUE ~ "N")) %>%
   # and impose filter
   filter(keep == "Y") %>%
@@ -96,14 +87,6 @@ dat_annual_stats_56 <- dat_order %>%
 
 # Calculate total annual insect emergence
 dat_annual_sum <- dat_order %>%
-  # and impose manuscript data filters
-  mutate(keep = case_when(watershed %in% c("5","6") & 
-                            year %in% c(2018, 2019, 2020, 2021, 2022, 2023, 2024) |
-                            watershed %in% c("1","2", "3","4", "9", "HBK") &
-                            year %in% c(2018, 2019, 2020) ~ "Y",
-                          TRUE ~ "N")) %>%
-  # and impose filter
-  filter(keep == "Y") %>%
   group_by(watershed, year) %>%
   summarize(sum_total_count = sum(replace_na(total_count, 0))) %>%
   ungroup() %>%
@@ -123,20 +106,12 @@ dat_dipt <- dat_order %>%
 
 # Calculate total annual black fly emergence
 dat_dipt_sum <- dat_dipt %>%
-  # and impose manuscript data filters
-  mutate(keep = case_when(watershed %in% c("5","6") &
-                            year %in% c(2018, 2019, 2020, 2021, 2022, 2023, 2024) |
-                            watershed %in% c("1","2", "3","4", "9", "HBK") &
-                            year %in% c(2018, 2019, 2020) ~ "Y",
-                          TRUE ~ "N")) %>%
-  # and impose filter
-  filter(keep == "Y") %>%
   group_by(watershed, year) %>%
   summarize(sum_total_count = sum(replace_na(total_count, 0))) %>%
   ungroup()
 
 # Export for use in future scripts.
-# saveRDS(dat_dipt_sum, "data_working/sum_annual_dipt_emerge_091225.rds")
+# saveRDS(dat_dipt_sum, "data_working/sum_annual_dipt_emerge_120925.rds")
 
 # Difference between largest and smallest sites in 2018
 11442/1807 # 633%
@@ -172,7 +147,7 @@ dat_dipt_peaks <- dat_dipt %>%
   mutate(peak_DOY = yday(Date))
 
 # Export for use in future scripts.
-# saveRDS(dat_dipt_peaks, "data_working/peaks_annual_dipt_emerge_091225.rds")
+# saveRDS(dat_dipt_peaks, "data_working/peaks_annual_dipt_emerge_120925.rds")
 
 # Make a joined dataset for plotting, rather than a table, below.
 dat_dipt_plotting <- full_join(dat_dipt_peaks, dat_dipt_weekly,
@@ -224,98 +199,10 @@ dat_annual_sum <- dat_annual_sum %>%
 
 # Export figure.
 # ggsave(plot = fig1_annual_sum,
-#        filename = "figures/emerge_annual_120325.jpg",
+#        filename = "figures/emerge_annual_120925.jpg",
 #        width = 30,
 #        height = 10,
 #        units = "cm")
-
-# Figure showing time series of C.V. values
-# Due to narrative order, trimming down to W5 & W6 only
-(fig_weekly_cv56 <- ggplot(dat_cv_order %>%
-                             mutate(order_f = factor(Order,
-                                                     levels = c("dipteran",
-                                                                "caddisfly",
-                                                                "stonefly",
-                                                                "mayfly"))) %>%
-                           filter(watershed %in% c(5,6)), 
-                           aes(x = Date, 
-                               y = cv_count_ed,
-                               group = interaction(Order, year))) +
-    geom_line(linewidth = 2, aes(color = order_f)) +
-    labs(y = "Weekly Coefficient of\nVariation",
-         x = "Date",
-         color = "Order") +
-    scale_color_manual(values = c("dipteran" = "#FFAA00",
-                                  "stonefly" = "#D46F10", 
-                                  "caddisfly" = "#A99CD9", 
-                                  "mayfly" = "#654783"),
-                       labels = c("dipteran" = "Diptera", 
-                                  "caddisfly" = "Trichoptera", 
-                                  "stonefly" = "Plecoptera", 
-                                  "mayfly" = "Ephemeroptera")) +
-    theme_bw() +
-    theme(text = element_text(size = 40),
-          strip.background = element_blank(),
-          legend.position = "none") +
-    facet_grid(Order~watershed, 
-               labeller = labeller(
-                 watershed = c('5'="Watershed 5",
-                               '6'="Watershed 6"),
-                 Order = c('dipteran'="Diptera",
-                           'mayfly'="Ephemeroptera",
-                           'stonefly'="Plecoptera",
-                           'caddisfly'="Trichoptera"))))
-
-# Export figure.
-# ggsave(plot = fig_weekly_cv56,
-#        filename = "figures/cv_weekly56_120325.jpg",
-#        width = 70,
-#        height = 35,
-#        units = "cm")
-
-# Figure showing time series of meand +- s.d. values
-# for W5 & W6 only
-(fig_weekly_ms56 <- ggplot(dat_cv_order %>%
-                             mutate(order_f = factor(Order,
-                                                     levels = c("dipteran",
-                                                                "caddisfly",
-                                                                "stonefly",
-                                                                "mayfly"))) %>%
-                             filter(watershed %in% c(5,6)), 
-                           aes(x = Date, 
-                               y = mean_count_ed,
-                               group = interaction(Order, year))) +
-    geom_line(linewidth = 0.75, alpha = 0.9,
-              aes(color = order_f)) +
-    geom_ribbon(aes(ymin = min, ymax = max,
-                    fill = order_f), alpha = 0.4) +
-    labs(y = "Weekly Mean Count per Trap",
-         x = "Date",
-         color = "Order") +
-    scale_color_manual(values = c("dipteran" = "#FFAA00",
-                                  "stonefly" = "#D46F10", 
-                                  "caddisfly" = "#A99CD9", 
-                                  "mayfly" = "#654783"),
-                       labels = c("dipteran" = "Diptera", 
-                                  "caddisfly" = "Trichoptera", 
-                                  "stonefly" = "Plecoptera", 
-                                  "mayfly" = "Ephemeroptera")) +
-    scale_fill_manual(values = c("dipteran" = "#FFAA00",
-                                  "stonefly" = "#D46F10", 
-                                  "caddisfly" = "#A99CD9", 
-                                  "mayfly" = "#654783"),
-                      guide = "none") +
-    theme_bw() +
-    theme(text = element_text(size = 20)) +
-    facet_grid(Order~watershed, 
-               labeller = labeller(
-                 watershed = c('5'="Watershed 5",
-                               '6'="Watershed 6"),
-                 Order = c('dipteran'="Diptera",
-                           'mayfly'="Ephemeroptera",
-                           'stonefly'="Plecoptera",
-                           'caddisfly'="Trichoptera")),
-               scales = "free"))
 
 # Figure showing time series of all orders
 (fig1_all <- ggplot(dat_order %>%
@@ -358,149 +245,57 @@ dat_annual_sum <- dat_annual_sum %>%
 
 # Export figure.
 # ggsave(plot = fig1_all,
-#        filename = "figures/emerge_all_120325.jpg",
+#        filename = "figures/emerge_all_120925.jpg",
 #        width = 70,
 #        height = 35,
 #        units = "cm")
 
-# Figure showing only EPT taxa time series (for SI)
-(fig1_ept <- ggplot(dat_order %>%
-                      filter(watershed %in% c(5,6)) %>%
-                      filter(!Order == "dipteran"), aes(x = Date, 
-                                                         y = total_count,
-                                                         color = Order,
-                                                         group = interaction(Order, year))) +
-    geom_line(linewidth = 1) +
-    scale_color_manual(values = c("#FC8D62", 
-                                  "#8DA0CB", "#E78AC3"),
-                       labels = c("Trichoptera",
-                                  "Plecoptera", "Ephemeroptera")) +
-    scale_x_continuous(
-      breaks = seq.Date(as.Date("2018-01-01"), 
-                        as.Date("2024-12-31"), 
-                        by = "1 year"),
-      labels = ~ format(.x, "%Y")) +
-    #scale_y_log10() +
-    labs(y = "Weekly Count of Aquatic Insects") +
-    facet_grid(watershed~., 
+# Figure showing time series of C.V. values
+# Due to narrative order, trimming down to W5 & W6 only
+(fig_weekly_cv56 <- ggplot(dat_cv_order %>%
+                             mutate(order_f = factor(Order,
+                                                     levels = c("dipteran",
+                                                                "caddisfly",
+                                                                "stonefly",
+                                                                "mayfly"))) %>%
+                           filter(watershed %in% c(5,6)), 
+                           aes(x = Date, 
+                               y = cv_count_ed,
+                               group = interaction(Order, year))) +
+    geom_line(linewidth = 2, aes(color = order_f)) +
+    labs(y = "Weekly Coefficient of\nVariation",
+         x = "Date",
+         color = "Order") +
+    scale_color_manual(values = c("dipteran" = "#FFAA00",
+                                  "stonefly" = "#D46F10", 
+                                  "caddisfly" = "#A99CD9", 
+                                  "mayfly" = "#654783"),
+                       labels = c("dipteran" = "Diptera", 
+                                  "caddisfly" = "Trichoptera", 
+                                  "stonefly" = "Plecoptera", 
+                                  "mayfly" = "Ephemeroptera")) +
+    theme_bw() +
+    theme(text = element_text(size = 40),
+          strip.background = element_blank(),
+          legend.position = "none") +
+    facet_grid(Order~watershed, 
                labeller = labeller(
                  watershed = c('5'="Watershed 5",
-                               '6'="Watershed 6"))) +
-    theme_bw() +
-    theme(text = element_text(size = 20)))
-
-# ggsave(plot = fig1_ept,
-#        filename = "figures/emerge_ept_082725.jpg",
-#        width = 40,
-#        height = 18,
-#        units = "cm")
-
-# Figure showing only Diptera time series (for SI)
-(suppfig1_dipt <- ggplot(dat_dipt %>% 
-                       mutate(keep = case_when(watershed %in% c("1","2", "3",
-                                                                  "4", "9", "HBK") &
-                                                 year %in% c(2018, 2019, 2020) ~ "Y",
-                                               TRUE ~ "N")) %>%
-                       # and impose filter
-                       filter(keep == "Y"), 
-                     aes(x = Date, y = total_count, group = year)) +
-   geom_line(linewidth = 1) +
-   scale_x_continuous(
-     breaks = seq.Date(as.Date("2018-01-01"), 
-                       as.Date("2020-12-31"), 
-                       by = "1 year"),
-     labels = ~ format(.x, "%Y")) +
-   labs(y = "Weekly Count of Aquatic Diptera") +
-   facet_grid(watershed~., 
-              labeller = labeller(
-                watershed = c('1'="W1",
-                              '2'="W2",
-                              '3'="W3",
-                              '4'="W4",
-                              '5'="W5",
-                              '6'="W6",
-                              '9'="W9",
-                              'HBK'="HB"),
-                scales = "free")) +
-   theme_bw() +
-   theme(text = element_text(size = 20)))
-
-# Figure showing annual counts of Diptera only (for SI)
-(suppfig2_dipt <- ggplot(dat_dipt_sum %>%
-                       filter(watershed %in% c('1','2','3',
-                                               '4','9','HBK')), 
-                     aes(x = watershed, 
-                         y = sum_total_count)) +
-    geom_boxplot(linewidth = 0.75, width = 0.4) +
-    geom_jitter(size = 7, shape = 21, 
-                width = 0.2, alpha = 0.8,
-                aes(fill = factor(year))) +
-    labs(y = "Annual Total Count of Aquatic Diptera",
-         x = "Watershed",
-         fill = "Year") +
-    scale_fill_brewer(palette = "Dark2") +
-    theme_bw() +
-    theme(text = element_text(size = 20)))
-
-# Add to time series above.
-(fig_dipt <- suppfig2_dipt + suppfig1_dipt +
-    plot_layout(widths = c(1, 4)) +
-    plot_annotation(tag_levels = "A"))
+                               '6'="Watershed 6"),
+                 Order = c('dipteran'="Diptera",
+                           'mayfly'="Ephemeroptera",
+                           'stonefly'="Plecoptera",
+                           'caddisfly'="Trichoptera"))))
 
 # Export figure.
-# ggsave(plot = fig_dipt,
-#        filename = "figures/emerge_dipt_091225.jpg",
-#        width = 50,
-#        height = 20,
+# ggsave(plot = fig_weekly_cv56,
+#        filename = "figures/cv_weekly56_120925.jpg",
+#        width = 70,
+#        height = 35,
 #        units = "cm")
 
 ##### Peak Emergence #####
 
-# Figure depicting characteristics of peak Diptera emergence
-(fig_peak <- ggplot(dat_dipt_plotting %>%
-                      filter(year %in% c(2018, 2019, 2020)),
-                    aes(x = factor(year), y = peak_DOY,
-                        fill = sum_total_count)) +
-    geom_point(shape = 21, size = 5) +
-    labs(y = "Spring Peak DOY",
-         x = "Year",
-         fill = "Annual Aquatic\nDiptera Emergence") +
-    scale_fill_gradient2(low = "white", mid = "grey80",
-                         high = "black", midpoint = 7000) +
-    facet_grid(.~watershed,
-               labeller = labeller(
-                 watershed = c("1"="W1", "2"="W2", "3" ="W3",
-                               "4"="W4", "5"="W5", "6"="W6",
-                               "9"="W9", "HBK"="HB"))) +
-    scale_x_discrete(labels = c("18", "19", "20")) +
-    theme_bw() +
-    theme(text = element_text(size = 20)))
-
-# Figure depicting characteristics of weekly Diptera emergence
-(fig_weekly <- ggplot(dat_dipt_plotting %>%
-                      filter(year %in% c(2018, 2019, 2020)),
-                    aes(x = factor(year), y = mean_weekly)) +
-    geom_linerange(aes(ymin = mean_minus_sd, 
-                       ymax = mean_weekly+sd_weekly),
-                   linewidth = 1) +
-    geom_point(shape = 16, size = 5) +
-    labs(y = "Mean Weekly Aquatic\nDiptera Emergence",
-         x = "Year") +
-    scale_x_discrete(labels = c("18", "19", "20")) +
-    facet_grid(.~watershed,
-               labeller = labeller(
-                 watershed = c('1'="W1",
-                               '2'="W2",
-                               '3'="W3",
-                               '4'="W4",
-                               '5'="W5",
-                               '6'="W6",
-                               '9'="W9",
-                               'HBK'="HB"))) +
-    theme_bw() +
-    theme(text = element_text(size = 20)))
-
-# Looking to see what these relationships are too...
 # Peak emergence vs. peak date
 (fig_peak_xy <- ggplot(dat_dipt_plotting %>%
                          filter(watershed %in% c(5, 6)),
@@ -512,21 +307,11 @@ dat_annual_sum <- dat_annual_sum %>%
                                  "grey80", "#9E9AC8", "#6A51A3",
                                  "#4A1486")) +
     scale_shape_manual(values = c(16, 21)) +
-    labs(y = "Peak Aquatic\nDiptera Emergence",
+    labs(y = "Peak Counts\nof Aquatic Diptera",
          x = "Spring Peak DOY") +
     theme_bw() +
     theme(text = element_text(size = 20),
           legend.position = "none"))
-
-# Weekly SD vs. weekly mean emergence
-(fig_weekly_xy <- ggplot(dat_dipt_plotting %>%
-                        filter(watershed %in% c(5,6)),
-                      aes(x = mean_weekly, y = sd_weekly)) +
-    geom_point(shape = 16, size = 4) +
-    labs(y = "S.D. Weekly Aquatic\nDiptera Emergence",
-         x = "Mean Weekly Aquatic\nDiptera Emergence") +
-    theme_bw() +
-    theme(text = element_text(size = 20)))
 
 # Annual emergence vs. peak emergence
 (fig_annual_xy <- ggplot(dat_dipt_plotting %>%
@@ -540,28 +325,19 @@ dat_annual_sum <- dat_annual_sum %>%
                                  "#4A1486")) +
     scale_shape_manual(values = c(16, 21)) +
     labs(y = "Annual Total Count\nof Aquatic Diptera",
-         x = "Peak Aquatic\nDiptera Emergence",
+         x = "Peak Counts\nof Aquatic Diptera",
          color = "Year",
          shape = "Watershed") +
     theme_bw() +
     theme(text = element_text(size = 20)))
 
-# Created joined figures.
-(fig_peak_weekly <- fig_peak / fig_weekly +
-    plot_annotation(tag_levels = "A"))
-
+# Created joined figure.
 (fig_peak_xy <- fig_peak_xy + fig_annual_xy +
     plot_annotation(tag_levels = "A"))
 
-# Export figures.
-# ggsave(plot = fig_peak_weekly,
-#        filename = "figures/emerge_peak_weekly_091225.jpg",
-#        width = 50,
-#        height = 20,
-#        units = "cm")
-
+# Export figure.
 # ggsave(plot = fig_peak_xy,
-#        filename = "figures/emerge_peak_xy_111125.jpg",
+#        filename = "figures/emerge_peak_xy_120925.jpg",
 #        width = 40,
 #        height = 17,
 #        units = "cm")
@@ -602,14 +378,6 @@ dat_site_stats_all <- dat_order %>%
   group_by(watershed, year) %>%
   summarize(sum_total_count = sum(replace_na(total_count,0))) %>%
   ungroup() %>%
-  # and impose manuscript data filters
-  mutate(keep = case_when(watershed %in% c("5","6") & 
-                            year %in% c(2018, 2019, 2020, 2021, 2022, 2023, 2024) |
-                            watershed %in% c("1","2", "3","4", "9", "HBK") &
-                            year %in% c(2018, 2019, 2020) ~ "Y",
-                          TRUE ~ "N")) %>%
-  # and impose filter
-  filter(keep == "Y") %>%
   # and finally summarize by WS
   group_by(watershed) %>%
   summarize(mean_annual = mean(sum_total_count),
@@ -622,14 +390,6 @@ dat_annual_stats_all <- dat_order %>%
   group_by(watershed, year) %>%
   summarize(sum_total_count = sum(replace_na(total_count,0))) %>%
   ungroup() %>%
-  # and impose manuscript data filters
-  mutate(keep = case_when(watershed %in% c("5","6") & 
-                            year %in% c(2018, 2019, 2020, 2021, 2022, 2023, 2024) |
-                            watershed %in% c("1","2", "3","4", "9", "HBK") &
-                            year %in% c(2018, 2019, 2020) ~ "Y",
-                          TRUE ~ "N")) %>%
-  # and impose filter
-  filter(keep == "Y") %>%
   # and finally summarize by WS
   group_by(year) %>%
   summarize(mean_annual = mean(sum_total_count),
@@ -649,11 +409,8 @@ dat_perc <- dat_order %>%
   summarize(all_dipt = sum(tot_dipt),
             all = sum(tot_all)) %>%
   mutate(perc = all_dipt/all)
-  
 
-# Estimate range
-dat_dipt_plotting <- dat_dipt_plotting %>%
-  mutate(range_weekly = max_weekly - min_weekly)
+##### Peak Emergence #####
 
 # Estimate mean peak emergence from W5 & W6
 dat_dipt_early_peaks_trim <- dat_dipt_peaks %>%
@@ -663,22 +420,28 @@ dat_dipt_early_peaks_trim <- dat_dipt_peaks %>%
 mean(dat_dipt_early_peaks_trim$peak_DOY) # 140
 sd(dat_dipt_early_peaks_trim$peak_DOY) # 9
 
-# Calculate mean and variability about annual emergence from W5 & W6.
-dat_dipt_sum56_stats <- dat_dipt_sum %>%
-  filter(watershed %in% c("5", "6")) %>%
-  filter(period == "early") %>%
-  group_by(watershed) %>%
-  summarize(mean_emerge = mean(sum_total_count),
-            sd_emerge = sd(sum_total_count)) %>%
-  ungroup()
+# Run paired t-test to investigate for consistent difference
+# between sites
+w5 <- dat_dipt_early_peaks_trim %>%
+  filter(watershed == 5) %>%
+  select(peak_DOY)
+w6 <- dat_dipt_early_peaks_trim %>%
+  filter(watershed == 6) %>%
+  select(peak_DOY)
 
-# Calculate C.V. of emergence by year.
-dat_annual_stats_redo <- dat_annual_sum %>%
-  group_by(watershed) %>%
-  summarize(mean_count = mean(sum_total_count),
-         sd_count = sd(sum_total_count)) %>%
-  mutate(cv_count = sd_count/mean_count) %>%
-  ungroup()
+vartest <- var.test(w5$peak_DOY,
+                    w6$peak_DOY,
+                    alternative = "two.sided",
+                    conf.level = 0.95) # p > 0.05 so accept null (var are equal)
+
+diff <- as.data.frame(cbind(w5$peak_DOY, w6$peak_DOY)) %>%
+  mutate(difference = V1 - V2)
+
+shapiro.test(diff$difference) # p = 0.04 so accept alternative, not norm. dist.
+
+# Using non-parametric Wilcox test due to evaluation above
+(wilcoxtest <- wilcox.test(w5$peak_DOY, w6$peak_DOY, paired = TRUE))
+# No significant difference, p = 0.2012
 
 # LMEMs for peak dataset.
 
