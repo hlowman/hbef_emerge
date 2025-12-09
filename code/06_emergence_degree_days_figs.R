@@ -19,14 +19,14 @@ library(nlme)
 library(zoo)
 
 # Load temperature data.
-temp <- readRDS("data_working/stream_temp_daily_W5_W6_2018_2025.rds")
+temp <- readRDS("data_working/stream_temp_daily_W5_W6_2018_2024.rds")
 
 # Load historical weekly dataset from EDI.
 chem <- read_csv("data_raw/HubbardBrook_weekly_stream_chemistry_1963-2024.csv")
 
 # Load emergence data.
-emerge_dat <- readRDS("data_working/aquatic_counts_complete_yrs_081425.rds")
-peak_dates <- readRDS("data_working/peaks_annual_dipt_emerge_081425.rds")
+emerge_dat <- readRDS("data_working/aquatic_counts_complete_yrs_120925.rds")
+peak_dates <- readRDS("data_working/peaks_annual_dipt_emerge_120925.rds")
 
 #### Tidy ####
 
@@ -133,41 +133,8 @@ peak_deg_days <- left_join(peak_deg_days, dat_deg_days_rolling)
 
 #### Plot ####
 
-# First, trying a plot to demonstrate variation in peak emergence dates
-# and cumulative degree days at time of peak emergence.
-early_peak_deg_days <- peak_deg_days %>%
-  filter(period == "early")
-
-(fig_degday1 <- ggplot(early_peak_deg_days) +
-  geom_vline(aes(xintercept = peak_DOY, 
-                 color = factor(Year),
-                 linetype = watershed),
-             linewidth = 1) +
-  geom_hline(aes(yintercept = sum_degree_days, color = factor(Year),
-                 linetype = watershed),
-             linewidth = 1) +
-  scale_color_brewer(palette = "Dark2") +
-  labs(x = "Peak Emergence (DOY)",
-       y = "Cumulative Degree Days",
-       color = "Year",
-       linetype = "Watershed") +
-  theme_bw() +
-  theme(text = element_text(size = 20))) # EEK
-
-# Trying a similar plot but with points instead.
-(fig_degday2 <- ggplot(early_peak_deg_days,
-                       aes(x = sum_degree_days, y = peak_DOY,
-                           color = factor(Year), shape = factor(watershed))) +
-    geom_point(size = 10, alpha = 0.75) +
-    scale_color_brewer(palette = "Dark2") +
-    labs(x = "Cumulative Degree Days",
-         y = "Peak Emergence (DOY)",
-         color = "Year",
-         shape = "Watershed") +
-    theme_bw() +
-    theme(text = element_text(size = 20))) # Ok much better.
-
-# And add summary plots of cumulative degree days in either watershed.
+# First, a plot to demonstrate variation 
+# cumulative degree days.
 dat_deg_days_summary <- dat_deg_days %>%
   group_by(watershed, DOY) %>%
   summarize(sum_deg_days_0.025 = quantile(sum_degree_days, probs = 0.025),
@@ -187,16 +154,21 @@ dat_deg_days_summary <- dat_deg_days %>%
                 fill = "#3793EC",
                 alpha = 0.2) +
     labs(x = "DOY",
-         y = "Cumulative Degree Days") +
-    facet_grid(watershed~.) +
+         y = "Cumulative\nDegree Days") +
+    facet_grid(.~watershed,
+               labeller = labeller(
+                 watershed = c('5'="Watershed 5",
+                               '6'="Watershed 6"))) +
     theme_bw() +
-    theme(text = element_text(size = 20)))
+    theme(text = element_text(size = 20),
+          axis.title.x = element_blank(),
+          strip.background = element_blank()))
 
 # Need to trim data to appear reasonable given sticky trap
 # deployment dates.
 dat_deg_days_summary_trim <- dat_deg_days_summary %>%
   filter(DOY > 79) %>% # when values begin to change
-  filter(DOY < 334) # when values stop changing
+  filter(DOY < 350) # when values stop changing
 
 (fig_degday4 <- ggplot(dat_deg_days_summary_trim,
                        aes(x = DOY)) +
@@ -207,98 +179,87 @@ dat_deg_days_summary_trim <- dat_deg_days_summary %>%
                 alpha = 0.2) +
     xlim(0, 365) +
     labs(x = "DOY",
-         y = "Cumulative Emergence") +
-    facet_grid(watershed~.) +
+         y = "Cumulative Annual\nEmergence Count") +
+    facet_grid(.~watershed) +
     theme_bw() +
-    theme(text = element_text(size = 20)))
+    theme(text = element_text(size = 20),
+          strip.background = element_blank(),
+          strip.text = element_blank()))
 
-# Plot rolling 7-day slope by site and year.
-ggplot(dat_deg_days_rolling,
-       aes(x = DOY, y = slope_7day)) +
-  geom_line() +
-  facet_grid(watershed~Year) +
-  theme_bw()
-
-# Plot rolling 7-day slope vs weekly emergence
-# start with 1 year.
-(fig_slope <- ggplot(dat_deg_days %>%
-                       filter(Year == 2024),
-       aes(x = slope_7day, 
-           y = total_count,
-           color = DOY)) +
-  geom_point(size = 5) +
-  scale_color_gradientn(colors = c("white",
-                                   "#FFAA00", 
-                                   "#632D1F")) +
-  labs(x = "7-day Degree Day Slope",
-       y = "Weekly Count of\nAquatic Diptera") +
-  facet_grid(watershed~.) +
-  theme_bw() +
-  theme(text = element_text(size = 20)))
-
-# Combine these three to describe phenology of degree days and emergence.
-(fig_degday_full <- (fig_degday3 + fig_degday4 + fig_slope +
+# Combine these two to describe phenology of degree days and emergence.
+(fig_degday_full <- (fig_degday3 / fig_degday4 + 
                       plot_annotation(tag_levels = "A")))
 
 # Export figure.
 # ggsave(plot = fig_degday_full,
-#        filename = "figures/sum_emerge_degdays_111225.jpg",
-#        width = 50,
-#        height = 15,
-#        units = "cm")
-
-# Also make the remaining years for the slope figure.
-# Plot rolling 7-day slope vs weekly emergence
-# start with 1 year.
-(fig_slope_full <- ggplot(dat_deg_days,
-                     aes(x = slope_7day, 
-                         y = total_count,
-                         color = DOY)) +
-    geom_point(size = 4) +
-    scale_color_gradientn(colors = c("white",
-                                     "#FFAA00", 
-                                     "#632D1F")) +
-    labs(x = "7-day Degree Day Slope",
-         y = "Weekly Count of\nAquatic Diptera") +
-    facet_grid(watershed~Year) +
-    theme_bw() +
-    theme(text = element_text(size = 20)))
-
-# Export figure.
-# ggsave(plot = fig_slope_full,
-#        filename = "figures/emerge_slope_degdays_111825.jpg",
-#        width = 30,
-#        height = 10,
+#        filename = "figures/sum_emerge_degdays_120925.jpg",
+#        width = 35,
+#        height = 20,
 #        units = "cm")
 
 #### Statistics ####
 
-##### LMEM #####
-# Peak DOY vs. degree days
-hist(early_peak_deg_days$sum_degree_days)
-hist(early_peak_deg_days$peak_DOY)
-# look fairly normally distributed given the small sample size
+##### Week Prior to Peak #####
 
-# Simple linear regression
-dd.lm1 <- lm(peak_DOY ~ sum_degree_days, data = early_peak_deg_days)
-summary(dd.lm1)
-plot(dd.lm1) # again, looks alright considering low SS
-# Re-fit with gls to compare better with lmem() function
-dd.lm2 <- gls(peak_DOY ~ sum_degree_days, data = early_peak_deg_days)
-# Fit multi-level model to account for site-level variation
-dd.lm3 <- lme(peak_DOY ~ sum_degree_days,
-                 random = ~1|watershed,
-                 data = early_peak_deg_days %>%
-                   mutate(watershed = factor(watershed)))
-# Compare the two model structures
-AIC(dd.lm2, dd.lm3) # essentially identical
-# Examine residuals
-plot(dd.lm3)
-qqnorm(dd.lm3) # look fine considering SS
-# Summary of multi-level model 
-summary(dd.lm3)
+# Create peak dataset to join with degree day dataset
+peak_days <- peak_dates %>%
+  filter(watershed %in% c(5,6)) %>%
+  rename(Year = year) %>%
+  select(watershed, Year, peak_DOY)
+
+# Join with degree days.
+peak_weeks <- dat_deg_days %>%
+  left_join(peak_days) %>%
+  group_by(watershed, Year) %>%
+  mutate(peak_week = case_when(DOY %in% c(peak_DOY,
+                                          peak_DOY-1,
+                                          peak_DOY-2,
+                                          peak_DOY-3,
+                                          peak_DOY-4,
+                                          peak_DOY-5,
+                                          peak_DOY-6,
+                                          peak_DOY-7) ~ "YES",
+                               TRUE ~ "NO")) %>%
+  ungroup() %>%
+  filter(peak_week == "YES") %>%
+  group_by(watershed, Year) %>%
+  summarize(mean_temp = mean(TempC),
+            sd_temp = sd(TempC)) %>%
+  ungroup()
+
+peak_weeks_ws <- dat_deg_days %>%
+  left_join(peak_days) %>%
+  group_by(watershed, Year) %>%
+  mutate(peak_week = case_when(DOY %in% c(peak_DOY,
+                                          peak_DOY-1,
+                                          peak_DOY-2,
+                                          peak_DOY-3,
+                                          peak_DOY-4,
+                                          peak_DOY-5,
+                                          peak_DOY-6,
+                                          peak_DOY-7) ~ "YES",
+                               TRUE ~ "NO")) %>%
+  ungroup() %>%
+  filter(peak_week == "YES") %>%
+  group_by(watershed) %>%
+  summarize(mean_temp = mean(TempC),
+            sd_temp = sd(TempC)) %>%
+  ungroup()
+
+peak_deg_days <- dat_deg_days %>%
+  left_join(peak_days) %>%
+  mutate(match = case_when(DOY == peak_DOY ~ "YES",
+                           TRUE ~ "NO")) %>%
+  filter(match == "YES") %>%
+  group_by(watershed) %>%
+  summarize(mean_dd = mean(sum_degree_days),
+            sd_dd = sd(sum_degree_days)) %>%
+  ungroup()
 
 ##### Historic Temp #####
+
+# NOTE - not using this due to concerns re:
+# comparison to weekly midday temps.
 
 # Mean temp at peak emergence dates in W5 & W6
 mean(early_peak_deg_days$TempC) # 11.52
