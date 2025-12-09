@@ -33,6 +33,13 @@ temp_fs <- read_csv("data_raw/HBEF_streamtemp_roughlyCleaned.csv") # from Daniel
 temp_hbwater <- read_csv("data_raw/hbef_temp.csv") # from HBWatER, 15 minute intervals
 chem <- read_csv("data_raw/HubbardBrook_weekly_stream_chemistry_1963-2024.csv") # from EDI
 
+#### Tidy ####
+
+# Found a suite of duplicates from HB Water data for some reason,
+# so first need to remove those.
+temp_hbwater_nodup <- unique(temp_hbwater)
+# No clue why those are in there.
+
 #### Offset Calculation W6 FS/HBWatER ####
 
 # Trim down datasets to include only w6 in the overlapping years.
@@ -53,16 +60,23 @@ temp_fs6_15 <- temp_fs6 %>%
 
 # And make sure HBWatER timezone matches FS.
 print(temp_fs6_15$TIMESTAMP_15[1])
-print(temp_hbwater$datetime[1])
+print(temp_hbwater_nodup$datetime[1])
 
-temp_hbwater6 <- temp_hbwater %>%
+temp_hbwater6 <- temp_hbwater_nodup %>%
+  # need to fix date
+  mutate(datetime_ed = as.POSIXct(as.character(datetime), tz = "America/New_York",
+                                  # MUST SET TIMEZONE, otherwise this gets all wonky
+                                  format = "%Y-%m-%d %H:%M:%S")) %>%
   filter(watershedID == 6) %>%
-  mutate(datetime_15 = round_date(datetime, unit = "15 mins")) %>%
+  mutate(datetime_15 = round_date(datetime_ed, unit = "15 mins")) %>%
   select(datetime_15, tempC) %>%
   # and need to remove the strange missingness delineator
   filter(!tempC == "\\N") %>%
   mutate(tempC = as.numeric(tempC)) %>%
-  rename(tempC_HBWatER = tempC)
+  rename(tempC_HBWatER = tempC) %>%
+  select(datetime_15, tempC_HBWatER)
+
+print(temp_hbwater6$datetime_15[1]) # Ok, phew.
 
 # Joined dates span April 2020 through August 2022
 temp_both <- inner_join(temp_fs6_15, temp_hbwater6, by = c("TIMESTAMP_15" = "datetime_15")) %>%
@@ -98,8 +112,8 @@ lm_temp <- lm(tempC_FS ~ tempC_HBWatER, data = temp_both_ed)
 
 # Examine model output.
 summary(lm_temp)
-# y = 0.9077786x + 0.4452433
-# Multiple R^2 = 0.9788
+# y = 0.9018772x + 0.4802097
+# Multiple R^2 = 0.9822
 # p < 2.2e-16
 
 # Examine model residuals.
@@ -116,9 +130,10 @@ plot(lm_temp2)
 
 # Trim HB data to the dates that it needs to be corrected for.
 temp_hb6_corrected <- temp_hbwater6 %>%
-  filter(datetime_15 >= as.POSIXct("2022-08-12 00:00", tz = "America/New_York",
-                                   format = "%Y-%m-%d %H:%M")) %>%
-  mutate(Temp_corr = 0.9077786*tempC_HBWatER + 0.4452433)
+  dplyr::filter(datetime_15 >= as.POSIXct("2022-08-12 00:00:00",
+                                          tz = "America/New_York",
+                                          format = "%Y-%m-%d %H:%M:%S")) %>%
+  mutate(Temp_corr = (0.9018772*tempC_HBWatER) + 0.4802097)
 
 # Assemble full W6 record.
 temp_hb6_corrected$Source <- "HBWatER"
@@ -135,8 +150,8 @@ temp_hb6_corrected_trim <- temp_hb6_corrected %>%
 
 temp_fs6_trim <- temp_fs6 %>%
   filter(TIMESTAMP < as.POSIXct("2022-08-12 00:00", tz = "America/New_York",
-                                format = "%Y-%m-%d %H:%M") &
-           TIMESTAMP > as.POSIXct("2017-12-31 23:59", tz = "America/New_York",
+                                format = "%Y-%m-%d %H:%M")) %>%
+  filter(TIMESTAMP > as.POSIXct("2017-12-31 23:59", tz = "America/New_York",
                                    format = "%Y-%m-%d %H:%M")) %>%
   # double check dates to be sure this filtered correctly
   rename(datetime = TIMESTAMP,
@@ -162,7 +177,7 @@ temp_fs56_overlap <- temp_fs %>%
                                   format = "%Y-%m-%d %H:%M"))
 
 # First, plot stream temperature in W5 as a function of W6.
-ggplot(test, 
+ggplot(temp_fs56_overlap, 
        aes(x = Streamtemp_W6,
            y = Streamtemp_W5)) +
   geom_point(alpha = 0.7) +
@@ -283,14 +298,15 @@ df <- as.data.frame(all_dates) %>%
 
 # And make the full record wide format.
 temp_fullrecord_daily_wide <- temp_fullrecord_daily %>%
+  select(-diff_date) %>%
   pivot_wider(names_from = watershed,
               values_from = daily_TempC)
 
 temp_fullrecord_daily_all <- left_join(df, temp_fullrecord_daily_wide)
 
 # Percent missing in both cases.
-sum(is.na(temp_fullrecord_daily_all$`5`)) # 130 days or 130/2560 = 5%
-sum(is.na(temp_fullrecord_daily_all$`6`)) # 174 days or 174/2560 = 7%
+sum(is.na(temp_fullrecord_daily_all$`5`)) # 127 days or 130/2557 = 5%
+sum(is.na(temp_fullrecord_daily_all$`6`)) # 171 days or 171/2557 = 7%
 
 # Using a linear interpolation.
 temp_fullrecord_daily_all <- temp_fullrecord_daily_all %>%
@@ -302,9 +318,9 @@ temp_fullrecord_daily_all <- temp_fullrecord_daily_all %>%
 #### Export ####
 
 # Export files for later use.
-# saveRDS(temp_fullrecord, 
+# saveRDS(temp_fullrecord,
 #         "data_working/stream_temp_W5_W6_2018_2024.rds")
-# saveRDS(temp_fullrecord_daily_all, 
+# saveRDS(temp_fullrecord_daily_all,
 #         "data_working/stream_temp_daily_W5_W6_2018_2024.rds")
 
 # End of script.
