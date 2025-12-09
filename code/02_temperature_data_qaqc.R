@@ -9,14 +9,16 @@
 
 # The challenge here is that temperature data is collected by
 # various parties, so I will be doing the following to 
-# harmonize it:
+# harmonize it (centering about the FS data, since it is the
+# richest record):
 
-# - Load in data collected by the FS (2012-2021) & HBWatER (2020-present)
-# - Calculate the offset between the two for 2020 and 2021 in W6
-# - Apply a correction to the FS data for the 2018-2020 years in W6
-# - Load in the historic weekly data collected by HBWatER (1960s-present)
-# - Calculate the offset between W6 and W5 for the full record
-# - Apply a correction to the W5 data for the years 2018 through 2024
+# - Load in data collected by the FS (2012-2022) & HBWatER (2020-present)
+# - Calculate the offset between the two for 2020-2022 in W6
+# - Apply a correction to the HB data for the 2022-2024 years in W6
+# This will complete the W6 record, keeping the 2018-2021 data intact
+# - Calculate the offset between W6 and W5 for 2020-2022 FS data
+# - Use the correction to estimate the W5 data for the 2022-2024 years
+# - And finally calculate daily mean temperatures and fill gaps
 
 #### Setup ####
 
@@ -31,19 +33,27 @@ temp_fs <- read_csv("data_raw/HBEF_streamtemp_roughlyCleaned.csv") # from Daniel
 temp_hbwater <- read_csv("data_raw/hbef_temp.csv") # from HBWatER, 15 minute intervals
 chem <- read_csv("data_raw/HubbardBrook_weekly_stream_chemistry_1963-2024.csv") # from EDI
 
-#### Offset Calculation FS/HBWatER ####
+#### Offset Calculation W6 FS/HBWatER ####
 
 # Trim down datasets to include only w6 in the overlapping years.
 temp_fs6 <- temp_fs %>%
   select(TIMESTAMP, Streamtemp_W6) %>%
   drop_na(Streamtemp_W6) %>%
-  mutate(TIMESTAMP = as.POSIXct(TIMESTAMP, format = "%m/%d/%Y %H:%M")) %>%
-  # also rounding time to nearest 15 minutes to better join with the HBWatER data
+  mutate(TIMESTAMP = as.POSIXct(TIMESTAMP, tz = "America/New_York",
+                                # MUST SET TIMEZONE, otherwise this gets all wonky
+                                format = "%m/%d/%Y %H:%M"))
+
+temp_fs6_15 <- temp_fs6 %>%
+  # also rounding time to nearest 15 minutes to better join with HBWatER data
   mutate(TIMESTAMP_15 = round_date(TIMESTAMP, unit = "15 mins")) %>%
   group_by(TIMESTAMP_15) %>%
   summarize(tempC = mean(Streamtemp_W6, na.rm = TRUE)) %>%
   ungroup() %>%
   rename(tempC_FS = tempC)
+
+# And make sure HBWatER timezone matches FS.
+print(temp_fs6_15$TIMESTAMP_15[1])
+print(temp_hbwater$datetime[1])
 
 temp_hbwater6 <- temp_hbwater %>%
   filter(watershedID == 6) %>%
@@ -55,7 +65,7 @@ temp_hbwater6 <- temp_hbwater %>%
   rename(tempC_HBWatER = tempC)
 
 # Joined dates span April 2020 through August 2022
-temp_both <- inner_join(temp_fs6, temp_hbwater6, by = c("TIMESTAMP_15" = "datetime_15")) %>%
+temp_both <- inner_join(temp_fs6_15, temp_hbwater6, by = c("TIMESTAMP_15" = "datetime_15")) %>%
   mutate(diff = tempC_FS - tempC_HBWatER)
 
 # Plot stream temperature.
@@ -83,11 +93,12 @@ temp_both_ed <- temp_both %>%
   filter(remove == "No")
 
 # Fit a linear model to determine the offset.
-lm_temp <- lm(tempC_HBWatER ~ tempC_FS, data = temp_both_ed)
+# Using FS as response, since that is what we will be estimating.
+lm_temp <- lm(tempC_FS ~ tempC_HBWatER, data = temp_both_ed)
 
 # Examine model output.
 summary(lm_temp)
-# y = 1.0781841x - 0.3041381
+# y = 0.9077786x + 0.4452433
 # Multiple R^2 = 0.9788
 # p < 2.2e-16
 
@@ -95,60 +106,65 @@ summary(lm_temp)
 plot(lm_temp)
 
 # Trying the same model with log-transformed values.
-lm_temp2 <- lm(log(tempC_HBWatER) ~ log(tempC_FS), data = temp_both_ed)
+lm_temp2 <- lm(log(tempC_FS) ~ log(tempC_HBWatER), data = temp_both_ed)
 summary(lm_temp2)
 plot(lm_temp2)
-# Residuals look worse, and there's no need to overcomplicate
-# things here, so using the original formula.
+# Residuals look the same (minus 1 outlier). There's no need to 
+# overcomplicate things here, so using the original formula.
 
-#### Correction to FS W6 data ####
+#### Correction to HB W6 data ####
 
-# Trim FS data to the dates that it needs to be corrected for.
-# Working from the original dataset so that I'm not averaging
-# twice (from 5min to 15min to daily).
-temp_fs6_corrected <- temp_fs %>%
-  select(TIMESTAMP, Streamtemp_W6) %>%
-  drop_na(Streamtemp_W6) %>%
-  mutate(TIMESTAMP = as.POSIXct(TIMESTAMP, format = "%m/%d/%Y %H:%M")) %>%
-  filter(TIMESTAMP > as.POSIXct("12/31/2017 23:59", format = "%m/%d/%Y %H:%M")) %>%
-  filter(TIMESTAMP < as.POSIXct("04/23/2020 14:01", format = "%m/%d/%Y %H:%M")) %>%
-  mutate(Temp_corr = 1.0781841*Streamtemp_W6 - 0.3041381)
+# Trim HB data to the dates that it needs to be corrected for.
+temp_hb6_corrected <- temp_hbwater6 %>%
+  filter(datetime_15 >= as.POSIXct("2022-08-12 00:00", tz = "America/New_York",
+                                   format = "%Y-%m-%d %H:%M")) %>%
+  mutate(Temp_corr = 0.9077786*tempC_HBWatER + 0.4452433)
 
 # Assemble full W6 record.
-temp_fs6_corrected$Source <- "FS"
-temp_hbwater6$Source <- "HBWatER"
+temp_hb6_corrected$Source <- "HBWatER"
+temp_fs6$Source <- "FS" 
+# remembering to switch back to using 5 min record 
+# so aggregates properly when calculating daily means
 
-temp_fs6_corrected_trim <- temp_fs6_corrected %>%
-  rename(datetime = TIMESTAMP,
+temp_hb6_corrected_trim <- temp_hb6_corrected %>%
+  filter(datetime_15 < as.POSIXct("2025-01-01 00:00", tz = "America/New_York",
+                                  format = "%Y-%m-%d %H:%M")) %>%
+  rename(datetime = datetime_15,
          TempC = Temp_corr) %>%
   select(datetime, TempC, Source)
 
-temp_hbwater6_trim <- temp_hbwater6 %>%
-  rename(datetime = datetime_15,
-         TempC = tempC_HBWatER)
+temp_fs6_trim <- temp_fs6 %>%
+  filter(TIMESTAMP < as.POSIXct("2022-08-12 00:00", tz = "America/New_York",
+                                format = "%Y-%m-%d %H:%M") &
+           TIMESTAMP > as.POSIXct("2017-12-31 23:59", tz = "America/New_York",
+                                   format = "%Y-%m-%d %H:%M")) %>%
+  # double check dates to be sure this filtered correctly
+  rename(datetime = TIMESTAMP,
+         TempC = Streamtemp_W6) %>%
+  select(datetime, TempC, Source)
 
-temp_fullrecord_w6 <- rbind(temp_fs6_corrected_trim,
-                            temp_hbwater6_trim)
+temp_fullrecord_w6 <- rbind(temp_fs6_trim,
+                            temp_hb6_corrected_trim)
 
 #### Offset Calculation W6/W5 ####
 
-# Trim down historical dataset to include only watersheds 5 & 6.
-chem_trim <- chem %>%
-  filter(site %in% c("W5", "W6")) %>%
-  select(site, date, temp)
-
-# Average out instances of duplicates
-chem_wide <- chem_trim %>%
-  group_by(site, date) %>%
-  summarize(temp = mean(temp, na.rm = TRUE)) %>%
-  ungroup() %>%
-  pivot_wider(names_from = "site",
-              values_from = "temp")
+# Trim down recent FS dataset to include only instances
+# of overlap for watersheds 5 & 6.
+temp_fs56_overlap <- temp_fs %>%
+  select(TIMESTAMP, Streamtemp_W5, Streamtemp_W6) %>%
+  mutate(TIMESTAMP = as.POSIXct(TIMESTAMP, tz = "America/New_York",
+                                # MUST SET TIMEZONE, otherwise this gets all wonky
+                                format = "%m/%d/%Y %H:%M")) %>%
+  # and now filter down to period of interest (2018-2022)
+  filter(TIMESTAMP < as.POSIXct("2022-08-12 00:00", tz = "America/New_York",
+                                format = "%Y-%m-%d %H:%M") &
+           TIMESTAMP > as.POSIXct("2017-12-31 23:59", tz = "America/New_York",
+                                  format = "%Y-%m-%d %H:%M"))
 
 # First, plot stream temperature in W5 as a function of W6.
-ggplot(chem_wide, 
-       aes(x = W6,
-           y = W5)) +
+ggplot(test, 
+       aes(x = Streamtemp_W6,
+           y = Streamtemp_W5)) +
   geom_point(alpha = 0.7) +
   geom_smooth(method = "lm") +
   labs(x = "W6 Stream Temperature",
@@ -157,63 +173,106 @@ ggplot(chem_wide,
 
 # Seems to be nearly a 1:1 relationship, but let's check to see where 
 # the greatest deviations are.
-chem_wide <- chem_wide %>%
-  mutate(diff = W5- W6)
-# Lots of positive deviations in the 80s, following the removal (168 >1).
-# Fewer negative deviations at various times (<100 >-1).
-# But none as large as the ones we saw with the FS instrument, which
-# leads me to believe even more that that was an instrumental issue.
+temp_fs56_overlap <- temp_fs56_overlap %>%
+  mutate(diff = Streamtemp_W5 - Streamtemp_W6)
+# Many issues with june and september, so removing those
+# prior to generating the relationship below.
 
 # Fit a linear model to determine the offset to be applied
-# in order to generate the long-term record for W5 using the
-# W6 data.
-lm_temp3 <- lm(W5 ~ W6, data = chem_wide)
+# in order to generate the record for W5 using the W6 data.
+lm_temp3 <- lm(Streamtemp_W5 ~ Streamtemp_W6, data = temp_fs56_overlap %>%
+                 filter(abs(diff) < 5))
 
 # Examine model output.
 summary(lm_temp3)
-# y = 1.000574x + 0.044111
-# Multiple R^2 = 0.9847
+# y = 0.9434919x + 0.3723405
+# Multiple R^2 = 0.9903
 # p < 2.2e-16
 
 # Examine model residuals.
-plot(lm_temp)
+plot(lm_temp3)
 
 # Trying the same model with log-transformed values.
-lm_temp4 <- lm(log(W5) ~ log(W6), data = chem_wide)
+lm_temp4 <- lm(log(Streamtemp_W5) ~ log(Streamtemp_W6), 
+               data = temp_fs56_overlap %>%
+                 filter(Streamtemp_W5 > 0) %>%
+                 filter(Streamtemp_W6 > 0) %>%
+                 filter(abs(diff) < 5))
 summary(lm_temp4)
 plot(lm_temp4)
-# Residuals look weirder, and there's no need to overcomplicate
+# Residuals look worse, and there's no need to overcomplicate
 # things here, so using the original formula.
 
 #### Correction to generate W5 data ####
 
-# Using the full W6 record generated above.
-temp_fullrecord <- temp_fullrecord_w6 %>%
+# Using the latter part of the W6 record generated above.
+temp_w5_generated <- temp_fullrecord_w6 %>%
+  filter(datetime >= as.POSIXct("2022-08-12 00:00", tz = "America/New_York",
+                                format = "%Y-%m-%d %H:%M")) %>%
   rename(TempC_W6 = TempC,
          Source_W6 = Source) %>%
-  mutate(TempC_W5 = 1.000574*TempC_W6 + 0.044111)
+  mutate(TempC = 0.9434919*TempC_W6 + 0.3723405) %>% 
+  select(datetime, TempC) %>%
+  mutate(Source = "HBWatER_W6offset")
+
+# Bring the first part of the FS record for W5.
+temp_fs5 <- temp_fs %>%
+  select(TIMESTAMP, Streamtemp_W5) %>%
+  drop_na(Streamtemp_W5) %>%
+  mutate(TIMESTAMP = as.POSIXct(TIMESTAMP, tz = "America/New_York",
+                                # MUST SET TIMEZONE, otherwise this gets all wonky
+                                format = "%m/%d/%Y %H:%M")) %>%
+  filter(TIMESTAMP > as.POSIXct("2017-12-31 23:59", tz = "America/New_York",
+                               format = "%Y-%m-%d %H:%M") &
+           TIMESTAMP <= as.POSIXct("2022-08-11 23:59", tz = "America/New_York",
+                                 format = "%Y-%m-%d %H:%M")) %>%
+  rename(datetime = TIMESTAMP,
+         TempC = Streamtemp_W5) %>%
+  mutate(Source = "FS") %>%
+  select(datetime, TempC, Source)
+
+# And join together to create the full W5 dataset.
+temp_fullrecord_w5 <- rbind(temp_fs5,
+                            temp_w5_generated)
+
+#### Daily Mean ####
+
+# Join together the two datasets.
+temp_fullrecord_w5$watershed <- 5
+temp_fullrecord_w6$watershed <- 6
+
+temp_fullrecord <- full_join(temp_fullrecord_w5, temp_fullrecord_w6)
 
 # Aggregate daily data and export that as well.
 temp_fullrecord_daily <- temp_fullrecord %>%
   mutate(date = date(datetime)) %>%
-  group_by(date) %>%
-  summarize(daily_TempC_W5 = mean(TempC_W5),
-            daily_TempC_W6 = mean(TempC_W6)) %>%
+  group_by(date, watershed) %>%
+  summarize(daily_TempC = mean(TempC, na.rm = TRUE)) %>%
   ungroup()
+
+# And a quick plot to examine the data itself
+# to look for outliers
+ggplot(temp_fullrecord_daily, aes(x = date,
+                                  y = daily_TempC)) +
+  geom_point() +
+  facet_wrap(.~watershed) +
+  theme_bw() # looking alright
 
 #### Gap Fill ####
 
 # Check to be sure no days are missing.
 temp_fullrecord_daily <- temp_fullrecord_daily %>%
-  mutate(diff_date = (interval(date, lag(date))) %/% days(1))
+  group_by(watershed) %>%
+  mutate(diff_date = (interval(date, lag(date))) %/% days(1)) %>%
+  ungroup()
 # Ok, there are a few instances, so I'll chose to interpolate.
 
 high_missingness <- temp_fullrecord_daily %>%
   filter(diff_date < -6)
 
 # Based on the above missingness, the periods I should interpret
-# with care are spring 2021 and spring 2024, which displayed
-# higher missingness in those years.
+# with care are August 2023, October/November 2023, April 2024,
+# and December 2024.
 
 # First, need to create a full record of dates to join by.
 all_dates <- seq(as.Date("2018-01-01"), as.Date("2024-12-31"), 
@@ -222,16 +281,30 @@ all_dates <- seq(as.Date("2018-01-01"), as.Date("2024-12-31"),
 df <- as.data.frame(all_dates) %>%
   rename(date = all_dates)
 
-temp_fullrecord_daily <- left_join(df, temp_fullrecord_daily)
+# And make the full record wide format.
+temp_fullrecord_daily_wide <- temp_fullrecord_daily %>%
+  pivot_wider(names_from = watershed,
+              values_from = daily_TempC)
+
+temp_fullrecord_daily_all <- left_join(df, temp_fullrecord_daily_wide)
+
+# Percent missing in both cases.
+sum(is.na(temp_fullrecord_daily_all$`5`)) # 130 days or 130/2560 = 5%
+sum(is.na(temp_fullrecord_daily_all$`6`)) # 174 days or 174/2560 = 7%
 
 # Using a linear interpolation.
-temp_fullrecord_daily <- temp_fullrecord_daily %>%
-  mutate(daily_TempC_W5_interp = na.approx(daily_TempC_W5),
-         daily_TempC_W6_interp = na.approx(daily_TempC_W6))
+temp_fullrecord_daily_all <- temp_fullrecord_daily_all %>%
+  arrange(date) %>%
+  mutate(daily_TempC_W5_interp = na.approx(`5`),
+         daily_TempC_W6_interp = na.approx(`6`)) %>%
+  ungroup()
 
 #### Export ####
 
-#saveRDS(temp_fullrecord, "data_working/stream_temp_W5_W6_2018_2025.rds")
-#saveRDS(temp_fullrecord_daily, "data_working/stream_temp_daily_W5_W6_2018_2025.rds")
+# Export files for later use.
+# saveRDS(temp_fullrecord, 
+#         "data_working/stream_temp_W5_W6_2018_2024.rds")
+# saveRDS(temp_fullrecord_daily_all, 
+#         "data_working/stream_temp_daily_W5_W6_2018_2024.rds")
 
 # End of script.
