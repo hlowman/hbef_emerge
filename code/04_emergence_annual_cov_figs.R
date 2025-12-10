@@ -19,7 +19,7 @@ library(RColorBrewer)
 library(nlme)
 
 # Load data.
-dat <- readRDS("data_working/sum_annual_dipt_emerge_091225.rds") # from 01 script
+dat <- readRDS("data_working/sum_annual_dipt_emerge_120925.rds") # from 01 script
 flow_dat <- readRDS("data_working/low_high_flow_days_cvQ.rds")
 april_flow_dat <- readRDS("data_working/april_flows.rds")
 chem_dat <- readRDS("data_working/nuts_chla_pH.rds")
@@ -118,8 +118,8 @@ all_dat_trim <- all_dat %>%
                                  "grey80", "#9E9AC8", "#6A51A3",
                                  "#4A1486")) +
    scale_shape_manual(values = c(16, 21)) +
-   labs(y = "Total Aq. Diptera Emergence",
-        x = "Prior Year Aq. Diptera Emergence",
+   labs(y = "Annual Total Count\nof Aquatic Diptera",
+        x = "Prior Year Annual Total\nCount of Aquatic Dipterae",
         shape = "Watershed",
         color = "Year") +
    theme_bw() +
@@ -127,7 +127,7 @@ all_dat_trim <- all_dat %>%
          legend.position = "right"))
 
 # ggsave(plot = fig_emerge,
-#        filename = "figures/sum_emerge_111825.jpg",
+#        filename = "figures/sum_emerge_121025.jpg",
 #        width = 20,
 #        height = 14,
 #        units = "cm")
@@ -183,7 +183,7 @@ summary(emerge.lm3)
                                   "grey80", "#9E9AC8", "#6A51A3",
                                   "#4A1486")) +
     scale_shape_manual(values = c(16, 21)) +
-    labs(y = "Total Aq. Diptera Emergence",
+    labs(y = "Annual Total Count\nof Aquatic Diptera",
          x = "Prior Year Low Flow Days",
          shape = "Watershed",
          fill = "Year") +
@@ -305,11 +305,11 @@ summary(emerge.lm3)
 #        height = 35,
 #        units = "cm")
 
-ggsave(plot = fig_flows_alt,
-       filename = "figures/sum_emerge_flows_100125.jpg",
-       width = 40,
-       height = 35,
-       units = "cm")
+# ggsave(plot = fig_flows_alt,
+#        filename = "figures/sum_emerge_flows_100125.jpg",
+#        width = 40,
+#        height = 35,
+#        units = "cm")
 
 ##### pH #####
 
@@ -324,7 +324,7 @@ ggsave(plot = fig_flows_alt,
                                  "grey80", "#9E9AC8", "#6A51A3",
                                  "#4A1486")) +
    scale_shape_manual(values = c(16, 21)) +
-   labs(y = "Total Aq. Diptera Emergence",
+   labs(y = "Annual Total Count\nof Aquatic Diptera",
         x = "Prior Year Low pH Days",
         shape = "Watershed",
         color = "Year") +
@@ -400,7 +400,7 @@ ggsave(plot = fig_flows_alt,
 
 # Export figures.
 # ggsave(plot = fig_supp,
-#        filename = "figures/sum_emerge_low_pH_111825.jpg",
+#        filename = "figures/sum_emerge_low_pH_121025.jpg",
 #        width = 40,
 #        height = 17,
 #        units = "cm")

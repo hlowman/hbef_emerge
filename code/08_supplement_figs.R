@@ -1,28 +1,82 @@
-### Time Series Figures of Emergence Alongside Conditions
-### August 6, 2025
+### SI Figures
+### September 16, 2025
 ### Heili Lowman
 
 #### README ####
 
-# The following script will create figures to showcase the
-# most/least productive years alongside concurrent stream
-# conditions.
+# The following script will create supplementary figures
+# as part of the insect emergence manuscript.
 
 #### Setup ####
 
 # Load necessary packages.
 library(here)
 library(tidyverse)
-library(patchwork)
 library(lubridate)
-library(scales)
+library(patchwork)
 
-# Load data.
-insect_dat <- readRDS("data_working/aquatic_counts_complete_yrs_081425.rds")
-stream_dat <- readRDS("data_working/stream_climate_qchem.rds")
+# Load datasets.
+q_dat <- read_csv("data_raw/HBEF_DailyStreamflow_1956-2024.csv") # Streamflow is in mm/day.
+q_stats <- readRDS("data_working/low_high_flow_days_cvQ.rds") # With low and high flow counts populated.
+ppt_dat <- read_csv("data_raw/dailyWatershedPrecip1956-2025.csv") # Precipitation is in mm.
+temp_dat <- read_csv("data_raw/HBEF_air_temp_daily.csv") # Daily air temperature in Celsius.
+chem_dat <- read_csv("data_raw/HubbardBrook_weekly_stream_chemistry_1963-2024.csv") # Weekly chem data.
+insect_dat <- readRDS("data_working/aquatic_counts_complete_yrs_120925.rds") # Insect count data.
+stream_dat <- readRDS("data_working/stream_climate_qchem.rds") # Summarized chemistry data.
+
+weir1_dat <- read_csv("data_raw/sediment_weir_1.csv")
+weir5_dat <- read_csv("data_raw/sediment_weir_5.csv")
+weir6_dat <- read_csv("data_raw/sediment_weir_6.csv")
 
 #### Tidy ####
 
+# Edits to flow and chemistry data for context plot below.
+# Will only present data at one site so as not to bias outputs.
+q_dat <- q_stats %>%
+  filter(WS == 6)
+
+q_dat_present <- q_dat %>%
+  mutate(keep = case_when(WS == 6 & water_year %in% c(2017, 2018, 2019, 2020,
+                                                2021, 2022, 2023, 2024) ~ "Yes",
+                          TRUE ~ NA)) %>%
+  filter(keep == "Yes")
+
+temp_trim <- temp_dat %>%
+  filter(STA == "STA1") %>%
+  mutate(month = month(date),
+         year = year(date),
+         water_year = case_when(month %in% c(1,2,3,4,5) ~ year-1,
+                                month %in% c(6,7,8,9,10,11,12) ~ year)) %>%
+  group_by(water_year) %>%
+  summarize(mean_air_temp = mean(AVE, na.rm = TRUE)) %>%
+  ungroup()
+
+temp_dat_present <- temp_trim %>%
+  mutate(keep = case_when(water_year %in% c(2017, 2018, 2019, 2020,
+                                            2021, 2022, 2023, 2024) ~ "Yes",
+                          TRUE ~ NA)) %>%
+  filter(keep == "Yes")
+
+chem_dat <- chem_dat %>%
+  filter(site %in% c("W1", "W2", "W3",
+                     "W4", "W5", "W6",
+                     "W9"))
+
+chem_dat_present <- chem_dat %>% 
+  mutate(year = year(date)) %>%
+  mutate(keep = case_when(site == "W1" & year %in% c(2018,2019,2020) |
+                          site == "W2" & year %in% c(2018,2019,2020) |
+                          site == "W3" & year %in% c(2018,2019,2020) |
+                          site == "W4" & year %in% c(2018,2019,2020) |
+                          site == "W5" & year %in% c(2018,2019, 2020,
+                                                  2021, 2022, 2023, 2024) |
+                          site == "W6" & year %in% c(2018,2019, 2020,
+                                                  2021, 2022, 2023, 2024) |
+                          site == "W9" & year %in% c(2018,2019,2020) ~ "Yes",
+                          TRUE ~ NA)) %>%
+  filter(keep == "Yes")
+
+# Filtering/joining insect and temperature data.
 # Trim only to black flies and summarize by week.
 # Summarize by order.
 dat_dipt <- insect_dat %>%
@@ -58,13 +112,116 @@ for(i in c(2017:2024)){
     arrange(desc(Streamflow)) %>%
     mutate(rank = row_number(),
            exceedance_perc = (rank / (n() + 1)) * 100)
-    
+  
   curves5 <- rbind(curves5, yearly_curve)
 }
 
-#### Plot ####
+# Trimming weir data to the dates of interest.
+weir1_dat_recent <- weir1_dat %>%
+  mutate(year = year(mdy(`end date`))) %>%
+  filter(year > 2017 & year < 2023) %>%
+  mutate(watershed = "W1")
 
-##### Fig 1 #####
+# Replace text in organic column with NA.
+weir1_dat_recent[3,3] <- NA
+
+weir5_dat_recent <- weir5_dat %>%
+  mutate(year = year(mdy(`end date`))) %>%
+  filter(year > 2017 & year < 2023) %>%
+  mutate(watershed = "W5")
+
+# Replace text in organic column with NA.
+weir5_dat_recent[3,3] <- NA
+
+weir6_dat_recent <- weir6_dat %>%
+  mutate(year = year(mdy(`end date`))) %>%
+  filter(year > 2017 & year < 2023) %>%
+  mutate(watershed = "W6")
+
+# Replace text in organic column with NA.
+weir6_dat_recent[3,3] <- NA
+
+# And join the above together.
+dat_weirs <- full_join(weir1_dat_recent, weir5_dat_recent)
+dat_weirs <- full_join(dat_weirs, weir6_dat_recent)
+
+# And make in long format for easier stacked bar plotting.
+dat_weirs_long <- dat_weirs %>%
+  mutate(organic = as.numeric(organic)) %>%
+  select(`start date`:total, year, watershed) %>%
+  pivot_longer(cols = organic:mineral,
+               names_to = "Fraction")
+
+#### Figures ####
+
+##### Historical #####
+
+# Historical context figures for temperature, flow, and nutrients.
+# And filtering to overlap a similar historical period (>1964) as
+# some of the other analyses.
+
+# Discharge panels
+(fig_q_low <- ggplot(q_dat, 
+                     aes(x = low_flow_days)) +
+   geom_histogram(color = "black", fill = "white",
+                  bins = 20) +
+   geom_histogram(data = q_dat_present,
+                  color = "black", fill = "gray40",
+                  bins = 20) +
+   scale_x_log10() +
+   labs(x = "Low Flow Days",
+        y = "Water Years") +
+   theme_bw())
+
+(fig_q_high <- ggplot(q_dat, 
+                      aes(x = high_flow_days)) +
+    geom_histogram(color = "black", fill = "white",
+                   bins = 10) +
+    geom_histogram(data = q_dat_present,
+                   color = "black", fill = "gray40",
+                   bins = 10) +
+    scale_x_continuous(breaks = c(0,2,4,6,8)) +
+    labs(x = "High Flow Days",
+         y = "Water Years") +
+    theme_bw())
+
+(fig_cvq <- ggplot(q_dat, 
+                   aes(x = cv_q)) +
+    geom_histogram(color = "black", fill = "white",
+                   bins = 20) +
+    geom_histogram(data = q_dat_present,
+                   color = "black", fill = "gray40",
+                   bins = 20) +
+    labs(x = expression(CV[Q]),
+         y = "Water Years") +
+    theme_bw())
+
+# Air temperature panel
+(fig_air_temp <- ggplot(temp_trim %>%
+                          filter(water_year > 1955), 
+                        aes(x = mean_air_temp)) +
+    geom_histogram(color = "black", fill = "white",
+                   bins = 20) +
+    geom_histogram(data = temp_dat_present,
+                   color = "black", fill = "gray40",
+                   bins = 20) +
+    #scale_x_log10() +
+    labs(x = "Mean Annual Air Temperature (°C)",
+         y = "Water Years") +
+    theme_bw())
+
+# Combine into a single figure.
+(fig_historic <- (fig_q_low + fig_q_high) / (fig_cvq + fig_air_temp) +
+    plot_annotation(tag_levels = "A"))
+
+# And export.
+# ggsave(plot = fig_historic,
+#        filename = "figures/conditions_historic_v_present_111825.jpg",
+#        width = 20,
+#        height = 18,
+#        units = "cm")
+
+##### TS W5 vs. W6 #####
 
 # First figure will compare W5 & W6 in 2019
 # to demonstrate variation among watersheds in a given year
@@ -74,39 +231,23 @@ for(i in c(2017:2024)){
 # simultaneously. - NB: Chose not to go this route because
 # the figure gets way too messy.
 
-# dat_2019 <- dat_all %>%
-#   filter(DATE < "2020-01-01" &
-#            DATE > "2018-12-31") %>%
-#   mutate(group = "present")
-# 
-# dat_2018 <- dat_all %>%
-#   filter(DATE < "2019-01-01" &
-#            DATE > "2017-12-31") %>%
-#   mutate(DATE_plus1 = DATE + years(1)) %>%
-#   select(-DATE) %>%
-#   rename(DATE = DATE_plus1) %>%
-#   mutate(group = "minus1yr")
-# 
-# dat_manip <- full_join(dat_2019, dat_2018)
-
 (fig_compare1a <- ggplot(dat_all %>%
-                          filter(watershed == "5") %>%
-                          filter(Date < "2020-01-01" &
-                                Date > "2018-12-31") %>%
-                          drop_na(total_count), 
+                           filter(watershed == "5") %>%
+                           filter(Date < "2020-01-01" &
+                                    Date > "2018-12-31") %>%
+                           drop_na(total_count), 
                          aes(x = Date, y = total_count)) +
-  geom_line(linewidth = 1) +
-  scale_x_date(date_breaks = "3 month", 
-               labels = date_format("%b-%Y"),
-               limits = as.Date(c('2019-01-01','2020-01-01'))) +
-  ylim(0, 4000) +
-  labs(y = "Weekly Emergence",
-       title = "Watershed 5") +
-  theme_bw() +
-  theme(axis.title.x = element_blank(),
-        axis.text.x = element_blank(),
-        text = element_text(size = 20),
-        legend.position = "none"))
+   geom_line(linewidth = 1) +
+   scale_x_date(date_breaks = "3 month", 
+                limits = as.Date(c('2019-01-01','2020-01-01'))) +
+   ylim(0, 4000) +
+   labs(y = "Weekly Emergence",
+        title = "Watershed 5") +
+   theme_bw() +
+   theme(axis.title.x = element_blank(),
+         axis.text.x = element_blank(),
+         text = element_text(size = 20),
+         legend.position = "none"))
 
 (fig_compare1b <- ggplot(dat_all %>%
                            filter(watershed == "6") %>%
@@ -115,8 +256,7 @@ for(i in c(2017:2024)){
                            drop_na(total_count), 
                          aes(x = Date, y = total_count)) +
     geom_line(linewidth = 1) +
-    scale_x_date(date_breaks = "3 month", 
-                 labels = date_format("%b-%Y"),
+    scale_x_date(date_breaks = "3 month",
                  limits = as.Date(c('2019-01-01','2020-01-01'))) +
     ylim(0, 4000) +
     labs(title = "Watershed 6") +
@@ -135,7 +275,6 @@ for(i in c(2017:2024)){
                          aes(x = Date, y = Streamflow)) +
     geom_line(color = "#3793EC", linewidth = 1) +
     scale_x_date(date_breaks = "3 month", 
-                 labels = date_format("%b-%Y"),
                  limits = as.Date(c('2019-01-01','2020-01-01'))) +
     ylim(0, 80) +
     labs(y = "Discharge (mm/day)") +
@@ -152,7 +291,6 @@ for(i in c(2017:2024)){
                          aes(x = Date, y = Streamflow)) +
     geom_line(color = "#3793EC", linewidth = 1) +
     scale_x_date(date_breaks = "3 month", 
-                 labels = date_format("%b-%Y"),
                  limits = as.Date(c('2019-01-01','2020-01-01'))) +
     ylim(0, 80) +
     theme_bw() +
@@ -171,7 +309,6 @@ for(i in c(2017:2024)){
                          aes(x = Date, y = temp)) +
     geom_line(color = "#D95F02", linewidth = 1) +
     scale_x_date(date_breaks = "3 month", 
-                 labels = date_format("%b-%Y"),
                  limits = as.Date(c('2019-01-01','2020-01-01'))) +
     ylim(0, 20) +
     labs(y = "Temperature (°C)") +
@@ -189,7 +326,6 @@ for(i in c(2017:2024)){
                          aes(x = Date, y = temp)) +
     geom_line(color = "#D95F02", linewidth = 1) +
     scale_x_date(date_breaks = "3 month", 
-                 labels = date_format("%b-%Y"),
                  limits = as.Date(c('2019-01-01','2020-01-01'))) +
     ylim(0, 20) +
     theme_bw() +
@@ -208,7 +344,7 @@ for(i in c(2017:2024)){
                          aes(x = Date, y = chla_T)) +
     geom_line(color = "#66A61E", linewidth = 1) +
     scale_x_date(date_breaks = "3 month", 
-                 labels = date_format("%b"),
+                 #labels = date_format("%b"),
                  limits = as.Date(c('2019-01-01','2020-01-01'))) +
     ylim(0, 10) +
     labs(x = "Date", y = "Chlorophyll a (mg/L)") +
@@ -224,7 +360,7 @@ for(i in c(2017:2024)){
                          aes(x = Date, y = chla_T)) +
     geom_line(color = "#66A61E", linewidth = 1) +
     scale_x_date(date_breaks = "3 month", 
-                 labels = date_format("%b"),
+                 #labels = date_format("%b"),
                  limits = as.Date(c('2019-01-01','2020-01-01'))) +
     ylim(0, 10) +
     labs(x = "Date") +
@@ -247,7 +383,7 @@ for(i in c(2017:2024)){
 #        height = 30,
 #        units = "cm")
 
-##### Fig 2 #####
+##### TS Flow Duration #####
 
 # Second figure will demonstrate variation within a watershed across years.
 # This will instead present 2020-2022 for Watershed 5 alone.
@@ -401,29 +537,57 @@ dat_w5 <- dat_all %>%
 #        height = 15,
 #        units = "cm")
 
-#### Temp at Peak Emergence ####
+##### Temp vs. Emergence #####
 
-# Slice entire dataset to include only peaks by year and site.
-dat_early_peaks <- dat_all %>%
-  filter(month < 10) %>%
-  group_by(watershed, year) %>%
-  slice_max(total_count, na_rm = TRUE) %>%
-  ungroup() %>%
-  mutate(keep = case_when(duplicate == "Dup" ~ "No",
-                          watershed == 1 & year %in% c(2018,2019,2020) |
-                          watershed == 2 & year %in% c(2018,2019,2020) |
-                          watershed == 3 & year %in% c(2018,2019,2020) |
-                          watershed == 4 & year %in% c(2018,2019,2020) |
-                          watershed == 5 & year %in% c(2018,2019, 2020,
-                                                  2021, 2022, 2023, 2024) |
-                          watershed == 6 & year %in% c(2018,2019, 2020,
-                                                  2021, 2022, 2023, 2024) |
-                          watershed == 9 & year %in% c(2018,2019,2020) ~ "Yes",
-                          TRUE ~ NA)) %>%
-  filter(keep == "Yes") %>%
-  drop_na(keep)
+# Including only W5 & W6.
+(fig_about_peak <- ggplot(dat_all %>% 
+                            mutate(keep = case_when(duplicate == "Dup" ~ "No",
+                                                    watershed == 5 & year %in% 
+                                                      c(2018,2019, 2020,
+                                                        2021, 2022, 2023, 2024) |
+                                                    watershed == 6 & year %in% 
+                                                      c(2018,2019, 2020,
+                                                        2021, 2022, 2023, 2024) ~ "Yes",
+                                                    TRUE ~ NA)) %>%
+                            filter(keep == "Yes"),
+                          aes(x = temp, y = total_count,
+                              shape = watershed)) +
+   geom_point(size = 5, stroke = 2, alpha = 0.5) +
+   scale_shape_manual(values = c(16, 21)) +
+   labs(x = "Daytime Temperature (°C)",
+        y = "Weekly Aquatic Diptera Emergence",
+        shape = "Watershed") +
+   theme_bw() +
+   theme(text = element_text(size = 20)))
 
-mean(dat_early_peaks$temp, na.rm = TRUE) # 10.93
-sd(dat_early_peaks$temp, na.rm = TRUE) # 1.79
+# Export figure.
+# ggsave(plot = fig_about_peak,
+#        filename = "figures/temp_about_peak_W5W6_121025.jpg",
+#        width = 24,
+#        height = 14,
+#        units = "cm")
+
+##### Weir Ponds #####
+
+# First, a figure of the weir basin contents.
+(weir_barplot <- ggplot(dat_weirs_long, 
+                        aes(x = year, 
+                            y = value,
+                            fill = Fraction)) +
+    geom_bar(position="stack", stat="identity") +
+    labs(x = "Year", y = "Dried Material (kg/ha)") +
+    theme_bw() +
+    # theme(text = element_text(size = 20),
+    #       legend.position = "top") +
+    scale_fill_manual(labels = c("Mineral", "Mixed", "Organic"),
+                      values = c("#DED4C8", "#AD6F4F", "#AEC96F")) +
+    facet_grid(watershed~.))
+
+# Export figure.
+# ggsave(plot = weir_barplot,
+#        filename = "figures/weir_recent_091625.jpg",
+#        width = 20,
+#        height = 15,
+#        units = "cm")
 
 # End of script.

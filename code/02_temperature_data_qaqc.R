@@ -16,7 +16,7 @@
 # - Calculate the offset between the two for 2020-2022 in W6
 # - Apply a correction to the HB data for the 2022-2024 years in W6
 # This will complete the W6 record, keeping the 2018-2021 data intact
-# - Calculate the offset between W6 and W5 for 2020-2022 FS data
+# - Calculate the offset between W6 and W5 for 2018-2022 FS data
 # - Use the correction to estimate the W5 data for the 2022-2024 years
 # - And finally calculate daily mean temperatures and fill gaps
 
