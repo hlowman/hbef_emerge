@@ -234,15 +234,20 @@ w3_algae <- chem_2013 %>%
 
 (fig_algae <- ggplot(w3_algae, aes(x = water_year,
                                    y = mean_chla)) +
-    geom_line() +
     geom_point(size = 1) +
-    scale_x_continuous(breaks = c(2010, 2015, 2020)) +
-    labs(y = "Mean chl a (mg/L)",
+    geom_point(size = 1,
+               aes(x = 1999, y = 5)) + # Emily's study
+    geom_point(size = 1,
+               aes(x = 1969, y = 0)) + # Stuart's study
+    geom_line() +
+    scale_x_continuous(limits = c(1965, 2025),
+                       breaks = c(1970, 1990, 2010)) +
+    labs(y = expression("Mean chl a (mg/m"^2*")"),
          x = "Water Year") +
     theme_bw())
 
 ggsave(plot = fig_algae,
-       filename = "figures/mean_algae_111125.jpg",
+       filename = "figures/mean_algae_121025.jpg",
        width = 8,
        height = 6,
        units = "cm")
