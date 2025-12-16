@@ -29,7 +29,7 @@ library(lubridate)
 library(zoo)
 
 # Load data.
-temp_fs <- read_csv("data_raw/HBEF_streamtemp_roughlyCleaned.csv") # from Danielle/Nina, 5 minute intervals
+temp_fs <- read_csv("data_raw/HBEF_streamtemp_roughlyCleaned_2.csv") # from Danielle/Nina, 5 minute intervals
 temp_hbwater <- read_csv("data_raw/hbef_temp.csv") # from HBWatER, 15 minute intervals
 chem <- read_csv("data_raw/HubbardBrook_weekly_stream_chemistry_1963-2024.csv") # from EDI
 
@@ -37,8 +37,10 @@ chem <- read_csv("data_raw/HubbardBrook_weekly_stream_chemistry_1963-2024.csv") 
 
 # Found a suite of duplicates from HB Water data for some reason,
 # so first need to remove those.
-temp_hbwater_nodup <- unique(temp_hbwater)
+temp_hbwater_nodup <- unique(temp_hbwater) %>%
 # No clue why those are in there.
+  mutate(DATETIME = with_tz(datetime, "EST"))
+# Also need to set timezone.
 
 #### Offset Calculation W6 FS/HBWatER ####
 
@@ -46,40 +48,32 @@ temp_hbwater_nodup <- unique(temp_hbwater)
 temp_fs6 <- temp_fs %>%
   select(TIMESTAMP, Streamtemp_W6) %>%
   drop_na(Streamtemp_W6) %>%
-  mutate(TIMESTAMP = as.POSIXct(TIMESTAMP, tz = "America/New_York",
-                                # MUST SET TIMEZONE, otherwise this gets all wonky
-                                format = "%m/%d/%Y %H:%M"))
+  mutate(DATETIME = with_tz(TIMESTAMP, tz = "EST"))
 
 temp_fs6_15 <- temp_fs6 %>%
   # also rounding time to nearest 15 minutes to better join with HBWatER data
-  mutate(TIMESTAMP_15 = round_date(TIMESTAMP, unit = "15 mins")) %>%
-  group_by(TIMESTAMP_15) %>%
+  mutate(DATETIME_15 = round_date(DATETIME, unit = "15 mins")) %>%
+  group_by(DATETIME_15) %>%
   summarize(tempC = mean(Streamtemp_W6, na.rm = TRUE)) %>%
   ungroup() %>%
   rename(tempC_FS = tempC)
 
 # And make sure HBWatER timezone matches FS.
-print(temp_fs6_15$TIMESTAMP_15[1])
-print(temp_hbwater_nodup$datetime[1])
+print(temp_fs6_15$DATETIME_15[1])
+print(temp_hbwater_nodup$DATETIME[1])
 
 temp_hbwater6 <- temp_hbwater_nodup %>%
-  # need to fix date
-  mutate(datetime_ed = as.POSIXct(as.character(datetime), tz = "America/New_York",
-                                  # MUST SET TIMEZONE, otherwise this gets all wonky
-                                  format = "%Y-%m-%d %H:%M:%S")) %>%
   filter(watershedID == 6) %>%
-  mutate(datetime_15 = round_date(datetime_ed, unit = "15 mins")) %>%
-  select(datetime_15, tempC) %>%
+  mutate(DATETIME_15 = round_date(DATETIME, unit = "15 mins")) %>%
+  select(DATETIME_15, tempC) %>%
   # and need to remove the strange missingness delineator
   filter(!tempC == "\\N") %>%
   mutate(tempC = as.numeric(tempC)) %>%
   rename(tempC_HBWatER = tempC) %>%
-  select(datetime_15, tempC_HBWatER)
-
-print(temp_hbwater6$datetime_15[1]) # Ok, phew.
+  select(DATETIME_15, tempC_HBWatER)
 
 # Joined dates span April 2020 through August 2022
-temp_both <- inner_join(temp_fs6_15, temp_hbwater6, by = c("TIMESTAMP_15" = "datetime_15")) %>%
+temp_both <- inner_join(temp_fs6_15, temp_hbwater6) %>%
   mutate(diff = tempC_FS - tempC_HBWatER)
 
 # Plot stream temperature.
@@ -95,13 +89,13 @@ ggplot(temp_both,
 # Also the strong deviations tend to happen
 # most frequently September of 2020.
 
-ggplot(temp_both, aes(x = TIMESTAMP_15, y = diff)) + geom_point()
+ggplot(temp_both, aes(x = DATETIME_15, y = diff)) + geom_point()
 # The difference really skyrockets in September 2020, so
 # I will remove these dates before proceeding
 
 temp_both_ed <- temp_both %>%
-  mutate(Year = year(TIMESTAMP_15),
-         Month = month(TIMESTAMP_15)) %>%
+  mutate(Year = year(DATETIME_15),
+         Month = month(DATETIME_15)) %>%
   mutate(remove = case_when(Year == 2020 & Month == 9 ~ "Yes",
                             TRUE ~ "No")) %>%
   filter(remove == "No")
@@ -112,8 +106,8 @@ lm_temp <- lm(tempC_FS ~ tempC_HBWatER, data = temp_both_ed)
 
 # Examine model output.
 summary(lm_temp)
-# y = 0.9018772x + 0.4802097
-# Multiple R^2 = 0.9822
+# y = 0.9158685x + 0.4234916
+# Multiple R^2 = 0.9845
 # p < 2.2e-16
 
 # Examine model residuals.
@@ -130,10 +124,10 @@ plot(lm_temp2)
 
 # Trim HB data to the dates that it needs to be corrected for.
 temp_hb6_corrected <- temp_hbwater6 %>%
-  dplyr::filter(datetime_15 >= as.POSIXct("2022-08-12 00:00:00",
+  dplyr::filter(DATETIME_15 >= as.POSIXct("2023-09-13 00:00:00",
                                           tz = "America/New_York",
                                           format = "%Y-%m-%d %H:%M:%S")) %>%
-  mutate(Temp_corr = (0.9018772*tempC_HBWatER) + 0.4802097)
+  mutate(Temp_corr = (0.9158685*tempC_HBWatER) + 0.4234916)
 
 # Assemble full W6 record.
 temp_hb6_corrected$Source <- "HBWatER"
@@ -142,19 +136,19 @@ temp_fs6$Source <- "FS"
 # so aggregates properly when calculating daily means
 
 temp_hb6_corrected_trim <- temp_hb6_corrected %>%
-  filter(datetime_15 < as.POSIXct("2025-01-01 00:00", tz = "America/New_York",
+  filter(DATETIME_15 < as.POSIXct("2025-01-01 00:00", tz = "America/New_York",
                                   format = "%Y-%m-%d %H:%M")) %>%
-  rename(datetime = datetime_15,
+  rename(datetime = DATETIME_15,
          TempC = Temp_corr) %>%
   select(datetime, TempC, Source)
 
 temp_fs6_trim <- temp_fs6 %>%
-  filter(TIMESTAMP < as.POSIXct("2022-08-12 00:00", tz = "America/New_York",
+  filter(DATETIME < as.POSIXct("2023-09-13 00:00", tz = "America/New_York",
                                 format = "%Y-%m-%d %H:%M")) %>%
-  filter(TIMESTAMP > as.POSIXct("2017-12-31 23:59", tz = "America/New_York",
+  filter(DATETIME > as.POSIXct("2017-12-31 23:59", tz = "America/New_York",
                                    format = "%Y-%m-%d %H:%M")) %>%
   # double check dates to be sure this filtered correctly
-  rename(datetime = TIMESTAMP,
+  rename(datetime = DATETIME,
          TempC = Streamtemp_W6) %>%
   select(datetime, TempC, Source)
 
@@ -167,13 +161,11 @@ temp_fullrecord_w6 <- rbind(temp_fs6_trim,
 # of overlap for watersheds 5 & 6.
 temp_fs56_overlap <- temp_fs %>%
   select(TIMESTAMP, Streamtemp_W5, Streamtemp_W6) %>%
-  mutate(TIMESTAMP = as.POSIXct(TIMESTAMP, tz = "America/New_York",
-                                # MUST SET TIMEZONE, otherwise this gets all wonky
-                                format = "%m/%d/%Y %H:%M")) %>%
+  mutate(DATETIME = with_tz(TIMESTAMP, tz = "EST")) %>%
   # and now filter down to period of interest (2018-2022)
-  filter(TIMESTAMP < as.POSIXct("2022-08-12 00:00", tz = "America/New_York",
+  filter(DATETIME < as.POSIXct("2023-09-13 00:00", tz = "America/New_York",
                                 format = "%Y-%m-%d %H:%M") &
-           TIMESTAMP > as.POSIXct("2017-12-31 23:59", tz = "America/New_York",
+        DATETIME > as.POSIXct("2017-12-31 23:59", tz = "America/New_York",
                                   format = "%Y-%m-%d %H:%M"))
 
 # First, plot stream temperature in W5 as a function of W6.
@@ -200,8 +192,8 @@ lm_temp3 <- lm(Streamtemp_W5 ~ Streamtemp_W6, data = temp_fs56_overlap %>%
 
 # Examine model output.
 summary(lm_temp3)
-# y = 0.9434919x + 0.3723405
-# Multiple R^2 = 0.9903
+# y = 0.9525071x + 0.3297451
+# Multiple R^2 = 0.9913
 # p < 2.2e-16
 
 # Examine model residuals.
@@ -222,11 +214,12 @@ plot(lm_temp4)
 
 # Using the latter part of the W6 record generated above.
 temp_w5_generated <- temp_fullrecord_w6 %>%
-  filter(datetime >= as.POSIXct("2022-08-12 00:00", tz = "America/New_York",
+  filter(datetime >= as.POSIXct("2023-09-13 00:00", 
+                                tz = "America/New_York",
                                 format = "%Y-%m-%d %H:%M")) %>%
   rename(TempC_W6 = TempC,
          Source_W6 = Source) %>%
-  mutate(TempC = 0.9434919*TempC_W6 + 0.3723405) %>% 
+  mutate(TempC = 0.9525071*TempC_W6 + 0.3297451) %>% 
   select(datetime, TempC) %>%
   mutate(Source = "HBWatER_W6offset")
 
@@ -234,14 +227,14 @@ temp_w5_generated <- temp_fullrecord_w6 %>%
 temp_fs5 <- temp_fs %>%
   select(TIMESTAMP, Streamtemp_W5) %>%
   drop_na(Streamtemp_W5) %>%
-  mutate(TIMESTAMP = as.POSIXct(TIMESTAMP, tz = "America/New_York",
-                                # MUST SET TIMEZONE, otherwise this gets all wonky
-                                format = "%m/%d/%Y %H:%M")) %>%
-  filter(TIMESTAMP > as.POSIXct("2017-12-31 23:59", tz = "America/New_York",
+  mutate(DATETIME = with_tz(TIMESTAMP, tz = "EST")) %>%
+  filter(DATETIME > as.POSIXct("2017-12-31 23:59", 
+                               tz = "America/New_York",
                                format = "%Y-%m-%d %H:%M") &
-           TIMESTAMP <= as.POSIXct("2022-08-11 23:59", tz = "America/New_York",
+           TIMESTAMP <= as.POSIXct("2023-09-13 23:59", 
+                                   tz = "America/New_York",
                                  format = "%Y-%m-%d %H:%M")) %>%
-  rename(datetime = TIMESTAMP,
+  rename(datetime = DATETIME,
          TempC = Streamtemp_W5) %>%
   mutate(Source = "FS") %>%
   select(datetime, TempC, Source)
@@ -305,8 +298,8 @@ temp_fullrecord_daily_wide <- temp_fullrecord_daily %>%
 temp_fullrecord_daily_all <- left_join(df, temp_fullrecord_daily_wide)
 
 # Percent missing in both cases.
-sum(is.na(temp_fullrecord_daily_all$`5`)) # 127 days or 130/2557 = 5%
-sum(is.na(temp_fullrecord_daily_all$`6`)) # 171 days or 171/2557 = 7%
+sum(is.na(temp_fullrecord_daily_all$`5`)) # 99 days or 99/2557 = 4%
+sum(is.na(temp_fullrecord_daily_all$`6`)) # 143 days or 143/2557 = 6%
 
 # Using a linear interpolation.
 temp_fullrecord_daily_all <- temp_fullrecord_daily_all %>%
