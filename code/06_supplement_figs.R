@@ -21,7 +21,7 @@ q_stats <- readRDS("data_working/low_high_flow_days_cvQ.rds") # With low and hig
 ppt_dat <- read_csv("data_raw/dailyWatershedPrecip1956-2025.csv") # Precipitation is in mm.
 temp_dat <- read_csv("data_raw/HBEF_air_temp_daily.csv") # Daily air temperature in Celsius.
 chem_dat <- read_csv("data_raw/HubbardBrook_weekly_stream_chemistry_1963-2024.csv") # Weekly chem data.
-insect_dat <- readRDS("data_working/aquatic_counts_complete_yrs_120925.rds") # Insect count data.
+insect_dat <- readRDS("data_working/aquatic_counts_complete_yrs_121925.rds") # Insect count data.
 stream_dat <- readRDS("data_working/stream_climate_qchem.rds") # Summarized chemistry data.
 
 weir1_dat <- read_csv("data_raw/sediment_weir_1.csv")
@@ -378,7 +378,7 @@ dat_weirs_long <- dat_weirs %>%
 
 # Export figure.
 # ggsave(plot = fig_compare1,
-#        filename = "figures/w5_w6_2019_081425.jpg",
+#        filename = "figures/w5_w6_2019_121925.jpg",
 #        width = 30,
 #        height = 30,
 #        units = "cm")
@@ -486,55 +486,9 @@ dat_w5 <- dat_all %>%
 
 # Export figure.
 # ggsave(plot = fig_compare2,
-#        filename = "figures/w5_20_21_22_111825.jpg",
+#        filename = "figures/w5_20_21_22_121925.jpg",
 #        width = 35,
 #        height = 25,
-#        units = "cm")
-
-# And creating a similar plot for W5's full record.
-(fig_compare3a <- ggplot(dat_w5 %>%
-                           filter(Date < "2024-01-01" &
-                                    Date > "2017-12-31") %>%
-                           drop_na(total_count), 
-                         aes(x = Date, y = total_count,
-                             color = period,
-                             group = Year)) +
-    geom_line(linewidth = 1) +
-    scale_color_manual(values = c("black", "gray70")) +
-    scale_x_date(date_breaks = "6 month", 
-                 labels = date_format("%b-%Y"),
-                 limits = as.Date(c('2018-01-01','2024-01-01'))) +
-    labs(y = "Weekly Emergence") +
-    theme_bw() +
-    theme(axis.title.x = element_blank(),
-          axis.text.x = element_blank(),
-          text = element_text(size = 20),
-          legend.position = "none"))
-
-(fig_compare3b <- ggplot(dat_w5 %>%
-                           filter(Date < "2024-01-01" &
-                                    Date > "2017-12-31"), 
-                         aes(x = Date, y = sum_low_flow_days,
-                             group = year)) +
-    geom_line(color = "#7570B3", linewidth = 1) +
-    scale_x_date(date_breaks = "6 month", 
-                 labels = date_format("%b-%Y"),
-                 limits = as.Date(c('2018-01-01','2024-01-01'))) +
-    labs(y = "Cumulative\nLow Flow Days",
-         x = "Date") +
-    theme_bw() +
-    theme(text = element_text(size = 20),
-          legend.position = "none"))
-
-# Pulling the second figure together.
-(fig_compare3 <- (fig_compare3a) /
-    (fig_compare3b))
-
-# Export figure.
-# ggsave(plot = fig_compare3,
-#        filename = "figures/w5_18_thru_24_090125.jpg",
-#        width = 45,
-#        height = 15,
 #        units = "cm")
 
 ##### Temp vs. Emergence #####
@@ -562,14 +516,14 @@ dat_w5 <- dat_all %>%
 
 # Export figure.
 # ggsave(plot = fig_about_peak,
-#        filename = "figures/temp_about_peak_W5W6_121025.jpg",
+#        filename = "figures/temp_about_peak_W5W6_121925.jpg",
 #        width = 24,
 #        height = 14,
 #        units = "cm")
 
 ##### Weir Ponds #####
 
-# First, a figure of the weir basin contents.
+# Figure of the weir basin contents.
 (weir_barplot <- ggplot(dat_weirs_long, 
                         aes(x = year, 
                             y = value,
