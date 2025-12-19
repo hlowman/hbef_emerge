@@ -8,7 +8,7 @@
 # of the HBEF aquatic insect emergence data.
 
 # Data was downloaded from https://hbwater.org/restricted_QAQC/
-# on December 5, 2025.
+# on December 19, 2025.
 
 #### Setup ####
 
@@ -18,7 +18,7 @@ library(tidyverse)
 library(lubridate)
 
 # Load data.
-dat <- read_csv("data_raw/sticky_trap_counts_120525.csv")
+dat <- read_csv("data_raw/sticky_trap_counts_121925.csv")
 
 #### Tidy ####
 
@@ -54,7 +54,7 @@ dat <- dat %>%
                              sample_id %in% c("ST211370") ~ ymd("2021-11-08"),
                              sample_id %in% c("ST210312") ~ ymd("2021-05-03"),
                              sample_id %in% c("ST200808") ~ ymd("2020-08-03"),
-                             TRUE ~ mdy(date)))
+                             TRUE ~ date))
 
 # Next, need to pivot to make into long format.
 dat_long <- dat %>%
@@ -117,10 +117,8 @@ dat_long_trim <- dat_long %>%
   mutate(year = year(Date)) %>%
   mutate(keep = case_when(watershed %in% c("5","6") & 
                             year %in% c(2018, 2019, 2020, 2021, 2022, 2023, 2024) |
-                            watershed %in% c("1","2", "3","4", "9") &
-                            year %in% c(2018, 2019, 2020) |
-                            watershed %in% c("HBK") &
-                            year %in% c(2018, 2019) ~ "Y",
+                            watershed %in% c("1","2", "3","4", "9", "HBK") &
+                            year %in% c(2018, 2019, 2020) ~ "Y",
                           TRUE ~ "N")) %>%
   # and impose filter
   filter(keep == "Y")
@@ -130,6 +128,6 @@ dat_long_aq <- dat_long_trim %>%
   filter(Order %in% c("dipteran", "caddisfly", "stonefly", "mayfly"))
 
 # Export data file for use in future scripts.
-saveRDS(dat_long_aq, "data_working/aquatic_counts_complete_yrs_120925.rds")
+saveRDS(dat_long_aq, "data_working/aquatic_counts_complete_yrs_121925.rds")
 
 # End of script.

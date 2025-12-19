@@ -19,7 +19,7 @@ library(scales)
 library(nlme)
 
 # Load data.
-dat <- readRDS("data_working/aquatic_counts_complete_yrs_120925.rds")
+dat <- readRDS("data_working/aquatic_counts_complete_yrs_121925.rds")
 
 #### Tidy ####
 
@@ -111,7 +111,7 @@ dat_dipt_sum <- dat_dipt %>%
   ungroup()
 
 # Export for use in future scripts.
-# saveRDS(dat_dipt_sum, "data_working/sum_annual_dipt_emerge_120925.rds")
+# saveRDS(dat_dipt_sum, "data_working/sum_annual_dipt_emerge_121925.rds")
 
 # Difference between largest and smallest sites in 2018
 11442/1807 # 633%
@@ -147,7 +147,7 @@ dat_dipt_peaks <- dat_dipt %>%
   mutate(peak_DOY = yday(Date))
 
 # Export for use in future scripts.
-# saveRDS(dat_dipt_peaks, "data_working/peaks_annual_dipt_emerge_120925.rds")
+# saveRDS(dat_dipt_peaks, "data_working/peaks_annual_dipt_emerge_121925.rds")
 
 # Make a joined dataset for plotting, rather than a table, below.
 dat_dipt_plotting <- full_join(dat_dipt_peaks, dat_dipt_weekly,
@@ -199,7 +199,7 @@ dat_annual_sum <- dat_annual_sum %>%
 
 # Export figure.
 # ggsave(plot = fig1_annual_sum,
-#        filename = "figures/emerge_annual_120925.jpg",
+#        filename = "figures/emerge_annual_121925.jpg",
 #        width = 30,
 #        height = 10,
 #        units = "cm")
@@ -245,7 +245,7 @@ dat_annual_sum <- dat_annual_sum %>%
 
 # Export figure.
 # ggsave(plot = fig1_all,
-#        filename = "figures/emerge_all_120925.jpg",
+#        filename = "figures/emerge_all_121925.jpg",
 #        width = 70,
 #        height = 35,
 #        units = "cm")
@@ -289,7 +289,7 @@ dat_annual_sum <- dat_annual_sum %>%
 
 # Export figure.
 # ggsave(plot = fig_weekly_cv56,
-#        filename = "figures/cv_weekly56_120925.jpg",
+#        filename = "figures/cv_weekly56_121925.jpg",
 #        width = 70,
 #        height = 35,
 #        units = "cm")
@@ -337,7 +337,7 @@ dat_annual_sum <- dat_annual_sum %>%
 
 # Export figure.
 # ggsave(plot = fig_peak_xy,
-#        filename = "figures/emerge_peak_xy_120925.jpg",
+#        filename = "figures/emerge_peak_xy_121925.jpg",
 #        width = 40,
 #        height = 17,
 #        units = "cm")

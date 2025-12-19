@@ -25,12 +25,10 @@ temp <- readRDS("data_working/stream_temp_daily_W5_W6_2018_2024.rds")
 chem <- read_csv("data_raw/HubbardBrook_weekly_stream_chemistry_1963-2024.csv")
 
 # Load emergence data.
-emerge_dat <- readRDS("data_working/aquatic_counts_complete_yrs_120925.rds")
-peak_dates <- readRDS("data_working/peaks_annual_dipt_emerge_120925.rds")
+emerge_dat <- readRDS("data_working/aquatic_counts_complete_yrs_121925.rds")
+peak_dates <- readRDS("data_working/peaks_annual_dipt_emerge_121925.rds")
 
 #### Tidy ####
-
-# Need to trim down the emergence data to the early season.
 
 # Summarize by order.
 dat_order <- emerge_dat %>%
@@ -51,7 +49,7 @@ dat_dipt <- dat_order %>%
          date = Date) %>%
   select(-month)
 
-# Join peaks with temperature data.
+# Pivot temperature data.
 temp_long <- temp %>%
   select(date, daily_TempC_W5_interp, daily_TempC_W6_interp) %>%
   pivot_longer(cols = daily_TempC_W5_interp:daily_TempC_W6_interp) %>%
@@ -192,7 +190,7 @@ dat_deg_days_summary_trim <- dat_deg_days_summary %>%
 
 # Export figure.
 # ggsave(plot = fig_degday_full,
-#        filename = "figures/sum_emerge_degdays_120925.jpg",
+#        filename = "figures/sum_emerge_degdays_121925.jpg",
 #        width = 35,
 #        height = 20,
 #        units = "cm")
@@ -260,28 +258,6 @@ peak_deg_days <- dat_deg_days %>%
 
 # NOTE - not using this due to concerns re:
 # comparison to weekly midday temps.
-
-# Mean temp at peak emergence dates in W5 & W6
-mean(early_peak_deg_days$TempC) # 11.52
-sd(early_peak_deg_days$TempC) # 2.28
-
-# Mean DD at peak emergence dates in W5 & W6
-mean(early_peak_deg_days$sum_degree_days) # 127.4874
-sd(early_peak_deg_days$sum_degree_days) # 50.686865
-
-# Mean slope of DD at peak emergence dates in W5 & W6
-mean(early_peak_deg_days$slope_7day) # 6.756599
-sd(early_peak_deg_days$slope_7day) # 2.121083
-
-# Examining difference in 5 & 6 for peak dates and cumulative degree days.
-doy_stats <- early_peak_deg_days %>%
-  select(watershed, Year, peak_DOY) %>%
-  pivot_wider(names_from = watershed, values_from = peak_DOY) %>%
-  mutate(diff = `5` - `6`)
-dd_stats <- early_peak_deg_days %>%
-  select(watershed, Year, sum_degree_days) %>%
-  pivot_wider(names_from = watershed, values_from = sum_degree_days) %>%
-  mutate(diff = `5` - `6`)
 
 ### Examining date of when 11 degrees C is reached historically. ###
 

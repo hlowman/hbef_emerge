@@ -19,7 +19,7 @@ library(RColorBrewer)
 library(nlme)
 
 # Load data.
-dat <- readRDS("data_working/sum_annual_dipt_emerge_120925.rds") # from 01 script
+dat <- readRDS("data_working/sum_annual_dipt_emerge_121925.rds") # from 01 script
 flow_dat <- readRDS("data_working/low_high_flow_days_cvQ.rds")
 april_flow_dat <- readRDS("data_working/april_flows.rds")
 chem_dat <- readRDS("data_working/nuts_chla_pH.rds")
@@ -127,7 +127,7 @@ all_dat_trim <- all_dat %>%
          legend.position = "right"))
 
 # ggsave(plot = fig_emerge,
-#        filename = "figures/sum_emerge_121025.jpg",
+#        filename = "figures/sum_emerge_121925.jpg",
 #        width = 20,
 #        height = 14,
 #        units = "cm")
@@ -195,8 +195,8 @@ summary(emerge.lm3)
 
 # Plot emergence relationship versus high flows
 (fig_high <- ggplot(all_dat_trim,
-                    aes(x = prev_early, 
-                        y = early,
+                    aes(x = prev_emerge, 
+                        y = sum_total_count,
                         fill = prev_high_flow_perc)) +
     geom_point(size = 7, shape = 21) +
     labs(y = "Total Aq. Diptera Emergence",
@@ -228,8 +228,8 @@ summary(emerge.lm3)
 
 # Plot emergence relationship versus flow variability
 (fig_cv <- ggplot(all_dat_trim,
-                  aes(x = prev_early, 
-                      y = early,
+                  aes(x = prev_emerge, 
+                      y = sum_total_count,
                       fill = prev_cv_q_perc)) +
     geom_point(size = 7, shape = 21) +
     scale_shape_manual(values = c(21, 22)) +
@@ -262,8 +262,8 @@ summary(emerge.lm3)
 
 # Plot emergence relationship versus snowmelt flows
 (fig_apr <- ggplot(all_dat_trim,
-                  aes(x = prev_early, 
-                      y = early,
+                  aes(x = prev_emerge, 
+                      y = sum_total_count,
                       fill = prev_max_apr_q_perc)) +
     geom_point(size = 7, shape = 21) +
     scale_shape_manual(values = c(21, 22)) +
@@ -400,7 +400,7 @@ summary(emerge.lm3)
 
 # Export figures.
 # ggsave(plot = fig_supp,
-#        filename = "figures/sum_emerge_low_pH_121025.jpg",
+#        filename = "figures/sum_emerge_low_pH_121925.jpg",
 #        width = 40,
 #        height = 17,
 #        units = "cm")

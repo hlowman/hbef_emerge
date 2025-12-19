@@ -12,13 +12,17 @@
 # harmonize it (centering about the FS data, since it is the
 # richest record):
 
-# - Load in data collected by the FS (2012-2022) & HBWatER (2020-present)
-# - Calculate the offset between the two for 2020-2022 in W6
-# - Apply a correction to the HB data for the 2022-2024 years in W6
-# This will complete the W6 record, keeping the 2018-2021 data intact
-# - Calculate the offset between W6 and W5 for 2018-2022 FS data
-# - Use the correction to estimate the W5 data for the 2022-2024 years
+# - Load in data collected by the FS (2012-2023) & HBWatER (2020-present)
+# - Calculate the offset between the two for 2020-2023 in W6
+# - Apply a correction to the HB data for the 2023-2024 data in W6
+# This will complete the W6 record, keeping the 2018-2022 data intact
+# - Calculate the offset between W6 and W5 for 2018-2023 FS data
+# - Use the correction to estimate the W5 data for the 2023-2024 years
 # - And finally calculate daily mean temperatures and fill gaps
+
+# NB: Checked with Mike, Nina, Mary, and Danielle re: the timestamps
+# for the files I'm using, and all are in EST, regardless of how R
+# might initially load them in, so assuming that below.
 
 #### Setup ####
 
@@ -29,42 +33,47 @@ library(lubridate)
 library(zoo)
 
 # Load data.
-temp_fs <- read_csv("data_raw/HBEF_streamtemp_roughlyCleaned_2.csv") # from Danielle/Nina, 5 minute intervals
-temp_hbwater <- read_csv("data_raw/hbef_temp.csv") # from HBWatER, 15 minute intervals
-chem <- read_csv("data_raw/HubbardBrook_weekly_stream_chemistry_1963-2024.csv") # from EDI
+temp_fs <- read_csv("data_raw/HBEF_streamtemp_roughlyCleaned_2.csv") # from Danielle/Nina, 5 minute intervals, 2012-2023
+temp_hbwater <- read_csv("data_raw/hbef_temp.csv") # from HBWatER, 15 minute intervals (off UNH server), 2018-2025
 
 #### Tidy ####
 
 # Found a suite of duplicates from HB Water data for some reason,
 # so first need to remove those.
-temp_hbwater_nodup <- unique(temp_hbwater) %>%
+temp_hbwater_nodup <- unique(temp_hbwater)
 # No clue why those are in there.
-  mutate(DATETIME = with_tz(datetime, "EST"))
-# Also need to set timezone.
+
+# Check how things read in.
+print(temp_hbwater_nodup$datetime[1])
+print(temp_fs$TIMESTAMP[1])
+
+# Ok, both read in as UTC, so need to re-assign both to EST.
+tz(temp_hbwater_nodup$datetime) <- "US/Eastern"
+tz(temp_fs$TIMESTAMP) <- "US/Eastern"
+
+# And check once more.
+print(temp_hbwater_nodup$datetime[1])
+print(temp_fs$TIMESTAMP[1])
+# Phew!
 
 #### Offset Calculation W6 FS/HBWatER ####
 
 # Trim down datasets to include only w6 in the overlapping years.
 temp_fs6 <- temp_fs %>%
   select(TIMESTAMP, Streamtemp_W6) %>%
-  drop_na(Streamtemp_W6) %>%
-  mutate(DATETIME = with_tz(TIMESTAMP, tz = "EST"))
+  drop_na(Streamtemp_W6)
 
 temp_fs6_15 <- temp_fs6 %>%
   # also rounding time to nearest 15 minutes to better join with HBWatER data
-  mutate(DATETIME_15 = round_date(DATETIME, unit = "15 mins")) %>%
+  mutate(DATETIME_15 = round_date(TIMESTAMP, unit = "15 mins")) %>%
   group_by(DATETIME_15) %>%
   summarize(tempC = mean(Streamtemp_W6, na.rm = TRUE)) %>%
   ungroup() %>%
   rename(tempC_FS = tempC)
 
-# And make sure HBWatER timezone matches FS.
-print(temp_fs6_15$DATETIME_15[1])
-print(temp_hbwater_nodup$DATETIME[1])
-
 temp_hbwater6 <- temp_hbwater_nodup %>%
   filter(watershedID == 6) %>%
-  mutate(DATETIME_15 = round_date(DATETIME, unit = "15 mins")) %>%
+  mutate(DATETIME_15 = round_date(datetime, unit = "15 mins")) %>%
   select(DATETIME_15, tempC) %>%
   # and need to remove the strange missingness delineator
   filter(!tempC == "\\N") %>%
@@ -72,7 +81,7 @@ temp_hbwater6 <- temp_hbwater_nodup %>%
   rename(tempC_HBWatER = tempC) %>%
   select(DATETIME_15, tempC_HBWatER)
 
-# Joined dates span April 2020 through August 2022
+# Joined dates span April 2020 through September 2023
 temp_both <- inner_join(temp_fs6_15, temp_hbwater6) %>%
   mutate(diff = tempC_FS - tempC_HBWatER)
 
@@ -101,12 +110,13 @@ temp_both_ed <- temp_both %>%
   filter(remove == "No")
 
 # Fit a linear model to determine the offset.
-# Using FS as response, since that is what we will be estimating.
+# Using FS as response, since that is what we will be estimating,
+# to fill in dates after September 2023 in W6.
 lm_temp <- lm(tempC_FS ~ tempC_HBWatER, data = temp_both_ed)
 
 # Examine model output.
 summary(lm_temp)
-# y = 0.9158685x + 0.4234916
+# y = 0.9158827x + 0.4233885
 # Multiple R^2 = 0.9845
 # p < 2.2e-16
 
@@ -125,30 +135,31 @@ plot(lm_temp2)
 # Trim HB data to the dates that it needs to be corrected for.
 temp_hb6_corrected <- temp_hbwater6 %>%
   dplyr::filter(DATETIME_15 >= as.POSIXct("2023-09-13 00:00:00",
-                                          tz = "America/New_York",
+                                          tz = "US/Eastern",
                                           format = "%Y-%m-%d %H:%M:%S")) %>%
-  mutate(Temp_corr = (0.9158685*tempC_HBWatER) + 0.4234916)
+  mutate(Temp_corr = (0.9158827*tempC_HBWatER) + 0.4233885)
 
 # Assemble full W6 record.
 temp_hb6_corrected$Source <- "HBWatER"
 temp_fs6$Source <- "FS" 
-# remembering to switch back to using 5 min record 
+# remembering to switch back to using 5 min record where possible
 # so aggregates properly when calculating daily means
 
 temp_hb6_corrected_trim <- temp_hb6_corrected %>%
-  filter(DATETIME_15 < as.POSIXct("2025-01-01 00:00", tz = "America/New_York",
+  filter(DATETIME_15 < as.POSIXct("2025-01-01 00:00", 
+                                  tz = "US/Eastern",
                                   format = "%Y-%m-%d %H:%M")) %>%
   rename(datetime = DATETIME_15,
          TempC = Temp_corr) %>%
   select(datetime, TempC, Source)
 
 temp_fs6_trim <- temp_fs6 %>%
-  filter(DATETIME < as.POSIXct("2023-09-13 00:00", tz = "America/New_York",
+  filter(TIMESTAMP < as.POSIXct("2023-09-13 00:00", tz = "US/Eastern",
                                 format = "%Y-%m-%d %H:%M")) %>%
-  filter(DATETIME > as.POSIXct("2017-12-31 23:59", tz = "America/New_York",
+  filter(TIMESTAMP > as.POSIXct("2017-12-31 23:59", tz = "US/Eastern",
                                    format = "%Y-%m-%d %H:%M")) %>%
   # double check dates to be sure this filtered correctly
-  rename(datetime = DATETIME,
+  rename(datetime = TIMESTAMP,
          TempC = Streamtemp_W6) %>%
   select(datetime, TempC, Source)
 
@@ -161,11 +172,9 @@ temp_fullrecord_w6 <- rbind(temp_fs6_trim,
 # of overlap for watersheds 5 & 6.
 temp_fs56_overlap <- temp_fs %>%
   select(TIMESTAMP, Streamtemp_W5, Streamtemp_W6) %>%
-  mutate(DATETIME = with_tz(TIMESTAMP, tz = "EST")) %>%
-  # and now filter down to period of interest (2018-2022)
-  filter(DATETIME < as.POSIXct("2023-09-13 00:00", tz = "America/New_York",
+  filter(TIMESTAMP < as.POSIXct("2023-09-13 00:00", tz = "US/Eastern",
                                 format = "%Y-%m-%d %H:%M") &
-        DATETIME > as.POSIXct("2017-12-31 23:59", tz = "America/New_York",
+           TIMESTAMP > as.POSIXct("2017-12-31 23:59", tz = "US/Eastern",
                                   format = "%Y-%m-%d %H:%M"))
 
 # First, plot stream temperature in W5 as a function of W6.
@@ -182,7 +191,7 @@ ggplot(temp_fs56_overlap,
 # the greatest deviations are.
 temp_fs56_overlap <- temp_fs56_overlap %>%
   mutate(diff = Streamtemp_W5 - Streamtemp_W6)
-# Many issues with june and september, so removing those
+# Many issues with june 2020 and september 2019, so removing those
 # prior to generating the relationship below.
 
 # Fit a linear model to determine the offset to be applied
@@ -192,7 +201,7 @@ lm_temp3 <- lm(Streamtemp_W5 ~ Streamtemp_W6, data = temp_fs56_overlap %>%
 
 # Examine model output.
 summary(lm_temp3)
-# y = 0.9525071x + 0.3297451
+# y = 0.9525086x + 0.3296129
 # Multiple R^2 = 0.9913
 # p < 2.2e-16
 
@@ -207,37 +216,34 @@ lm_temp4 <- lm(log(Streamtemp_W5) ~ log(Streamtemp_W6),
                  filter(abs(diff) < 5))
 summary(lm_temp4)
 plot(lm_temp4)
-# Residuals look worse, and there's no need to overcomplicate
-# things here, so using the original formula.
+# Residuals look worse, so using the original formula.
 
 #### Correction to generate W5 data ####
-
-# Using the latter part of the W6 record generated above.
-temp_w5_generated <- temp_fullrecord_w6 %>%
-  filter(datetime >= as.POSIXct("2023-09-13 00:00", 
-                                tz = "America/New_York",
-                                format = "%Y-%m-%d %H:%M")) %>%
-  rename(TempC_W6 = TempC,
-         Source_W6 = Source) %>%
-  mutate(TempC = 0.9525071*TempC_W6 + 0.3297451) %>% 
-  select(datetime, TempC) %>%
-  mutate(Source = "HBWatER_W6offset")
 
 # Bring the first part of the FS record for W5.
 temp_fs5 <- temp_fs %>%
   select(TIMESTAMP, Streamtemp_W5) %>%
-  drop_na(Streamtemp_W5) %>%
-  mutate(DATETIME = with_tz(TIMESTAMP, tz = "EST")) %>%
-  filter(DATETIME > as.POSIXct("2017-12-31 23:59", 
-                               tz = "America/New_York",
+  filter(TIMESTAMP > as.POSIXct("2017-12-31 23:59", 
+                               tz = "US/Eastern",
                                format = "%Y-%m-%d %H:%M") &
            TIMESTAMP <= as.POSIXct("2023-09-13 23:59", 
-                                   tz = "America/New_York",
-                                 format = "%Y-%m-%d %H:%M")) %>%
-  rename(datetime = DATETIME,
+                                   tz = "US/Eastern",
+                                   format = "%Y-%m-%d %H:%M")) %>%
+  rename(datetime = TIMESTAMP,
          TempC = Streamtemp_W5) %>%
   mutate(Source = "FS") %>%
   select(datetime, TempC, Source)
+
+# Using the latter part of the W6 record generated above.
+temp_w5_generated <- temp_fullrecord_w6 %>%
+  filter(datetime >= as.POSIXct("2023-09-13 00:00", 
+                                tz = "US/Eastern",
+                                format = "%Y-%m-%d %H:%M")) %>%
+  rename(TempC_W6 = TempC,
+         Source_W6 = Source) %>%
+  mutate(TempC = 0.9525086*TempC_W6 + 0.3296129) %>% 
+  select(datetime, TempC) %>%
+  mutate(Source = "HBWatER_W6offset")
 
 # And join together to create the full W5 dataset.
 temp_fullrecord_w5 <- rbind(temp_fs5,
@@ -264,7 +270,7 @@ ggplot(temp_fullrecord_daily, aes(x = date,
                                   y = daily_TempC)) +
   geom_point() +
   facet_wrap(.~watershed) +
-  theme_bw() # looking alright
+  theme_bw() # looking good
 
 #### Gap Fill ####
 
@@ -279,7 +285,7 @@ high_missingness <- temp_fullrecord_daily %>%
   filter(diff_date < -6)
 
 # Based on the above missingness, the periods I should interpret
-# with care are August 2023, October/November 2023, April 2024,
+# with care are January 2022, Oct/Nov 2023, January 2024, April 2024,
 # and December 2024.
 
 # First, need to create a full record of dates to join by.
