@@ -60,7 +60,7 @@ dat_cv_annual <- dat_cv_order %>%
   summarize(mean_cv = mean(cv_count, na.rm = TRUE)) %>%
   ungroup()
 
-# Calculate total annual emergence for black flies vs. EPT
+# Calculate total annual emergence for dipterans vs. EPT
 dat_annual_wide <- dat_order %>%
   mutate(group = ifelse(Order == "dipteran", "D", "EPT")) %>%
   group_by(watershed, year, group) %>%
@@ -94,9 +94,9 @@ dat_annual_sum <- dat_order %>%
   mutate(border = case_when(year %in% c(2018, 2019, 2020) ~ 1.5,
                             year %in% c(2021, 2022, 2023, 2024) ~ 0.25))
 
-##### Black flies ####
+##### Dipterans ####
 
-# Trim data down to only black flies.
+# Trim data down to only dipterans.
 dat_dipt <- dat_order %>%
   filter(Order == "dipteran") %>%
   mutate(month = month(Date)) %>%
@@ -104,7 +104,7 @@ dat_dipt <- dat_order %>%
   mutate(period = case_when(month < 10 ~ "early",
                             TRUE ~ "late"))
 
-# Calculate total annual black fly emergence
+# Calculate total annual dipteran emergence
 dat_dipt_sum <- dat_dipt %>%
   group_by(watershed, year) %>%
   summarize(sum_total_count = sum(replace_na(total_count, 0))) %>%
@@ -186,6 +186,8 @@ dat_annual_sum <- dat_annual_sum %>%
                                shape = watershed_f)) +
     geom_point(size = 5, stroke = 1.5,
               position = position_dodge(width = 0.3)) +
+    scale_y_log10(limits = c(500, 50000),
+                  breaks = c(1000, 5000, 25000)) +
     scale_color_manual(values = c("#005A32", "#41AB5D", "#A1D99B",
                                  "grey70", "#9E9AC8", "#6A51A3",
                                  "#4A1486"),
@@ -199,7 +201,7 @@ dat_annual_sum <- dat_annual_sum %>%
 
 # Export figure.
 # ggsave(plot = fig1_annual_sum,
-#        filename = "figures/emerge_annual_121925.jpg",
+#        filename = "figures/emerge_annual_021726.jpg",
 #        width = 30,
 #        height = 10,
 #        units = "cm")
@@ -220,6 +222,7 @@ dat_annual_sum <- dat_annual_sum %>%
                        as.Date("2024-12-31"), 
                        by = "1 year"),
      labels = ~ format(.x, "%Y")) +
+    scale_y_log10() +
     scale_color_manual(values = c("dipteran" = "#FFAA00",
                                   "stonefly" = "#D46F10", 
                                   "caddisfly" = "#A99CD9", 
@@ -245,7 +248,7 @@ dat_annual_sum <- dat_annual_sum %>%
 
 # Export figure.
 # ggsave(plot = fig1_all,
-#        filename = "figures/emerge_all_121925.jpg",
+#        filename = "figures/emerge_all_021726.jpg",
 #        width = 70,
 #        height = 35,
 #        units = "cm")
@@ -263,6 +266,7 @@ dat_annual_sum <- dat_annual_sum %>%
                                y = cv_count_ed,
                                group = interaction(Order, year))) +
     geom_line(linewidth = 2, aes(color = order_f)) +
+    scale_y_log10() +
     labs(y = "Weekly Coefficient of\nVariation",
          x = "Date",
          color = "Order") +
@@ -289,7 +293,7 @@ dat_annual_sum <- dat_annual_sum %>%
 
 # Export figure.
 # ggsave(plot = fig_weekly_cv56,
-#        filename = "figures/cv_weekly56_121925.jpg",
+#        filename = "figures/cv_weekly56_021726.jpg",
 #        width = 70,
 #        height = 35,
 #        units = "cm")
