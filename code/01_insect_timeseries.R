@@ -239,8 +239,7 @@ dat_annual_sum <- dat_annual_sum %>%
                 Order = c('dipteran'="Diptera",
                           'mayfly'="Ephemeroptera",
                           'stonefly'="Plecoptera",
-                          'caddisfly'="Trichoptera")),
-              scales = "free") +
+                          'caddisfly'="Trichoptera"))) +
    theme_bw() +
    theme(text = element_text(size = 40),
          strip.background = element_blank(),
