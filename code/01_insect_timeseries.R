@@ -533,7 +533,7 @@ dat_annual_wide_all <- dat_annual_wide_all %>%
 
 ##### Annual Metrics #####
 
-# Regression to investigate effect of year and site on total emergence
+# ANOVAs to investigate effect of year and site on total emergence
 
 # Examine variables
 hist(dat_annual_sum$sum_total_count) # looks ok
@@ -551,14 +551,23 @@ ggplot(dat_annual_sum, aes(x = factor(year),
 dat_annual_sum <- dat_annual_sum %>%
   mutate(year_f = factor(year))
 
-annual.lm1 <- lm(sum_total_count ~ year_f + watershed_f,
+annual.aov <- aov(sum_total_count ~ year_f,
                  data = dat_annual_sum)
 
-# Examine residuals
-plot(annual.lm1) # look good!
+# Examine results
+anova(annual.aov)
+
+# And perform Tukey's HSD
+TukeyHSD(annual.aov)
+
+site.aov <- aov(sum_total_count ~ watershed_f,
+                 data = dat_annual_sum)
 
 # Examine results
-summary(annual.lm1)
+anova(site.aov)
+
+# And perform Tukey's HSD
+TukeyHSD(site.aov)
 
 # Calculate mean annual emergence across all taxa and sites
 dat_site_stats_all <- dat_order %>%
