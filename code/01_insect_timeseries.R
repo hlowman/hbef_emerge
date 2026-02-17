@@ -69,6 +69,14 @@ dat_annual_wide <- dat_order %>%
   pivot_wider(names_from = group,
               values_from = sum_total_count)
 
+# Calculate total annual emergence for all orders
+dat_annual_wide_all <- dat_order %>%
+  group_by(watershed, year, Order) %>%
+  summarize(sum_total_count = sum(replace_na(total_count,0))) %>%
+  ungroup() %>%
+  pivot_wider(names_from = Order,
+              values_from = sum_total_count)
+
 # Calculate mean annual emergence for separate taxa in W5 & W6
 dat_annual_stats_56 <- dat_order %>%
   group_by(watershed, year, Order) %>%
@@ -297,6 +305,182 @@ dat_annual_sum <- dat_annual_sum %>%
 #        height = 35,
 #        units = "cm")
 
+# Creating additional EPT focused figures to investigate
+# relationship with dipteran emergence across sites/years.
+
+dat_annual_wide_all <- dat_annual_wide_all %>%
+  mutate(watershed_f = factor(case_when(watershed == "1" ~ "W1",
+                                        watershed == "2" ~ "W2",
+                                        watershed == "3" ~ "W3",
+                                        watershed == "4" ~ "W4",
+                                        watershed == "5" ~ "W5",
+                                        watershed == "6" ~ "W6",
+                                        watershed == "9" ~ "W9",
+                                        watershed == "HBK" ~ "HBK"),
+                              levels = c("W1", "W2", "W3",
+                                         "W4", "W5", "W6",
+                                         "W9", "HBK")))
+
+# Figure showing caddisfly v. dipteran emergence
+(fig_annual_sumT <- ggplot(dat_annual_wide_all, 
+                           aes(x = dipteran, 
+                               y = caddisfly,
+                               color = factor(year),
+                               shape = watershed_f)) +
+    geom_point(size = 5, stroke = 1.5) +
+    scale_y_log10(limits = c(1, 2000),
+                  breaks = c(10, 100, 1000)) +
+    scale_x_log10(limits = c(900, 30000),
+                  breaks = c(1000, 5000, 25000)) +
+    scale_color_manual(values = c("#005A32", "#41AB5D", "#A1D99B",
+                                  "grey70", "#9E9AC8", "#6A51A3",
+                                  "#4A1486"),
+                       guide = "none") +
+    scale_shape_manual(values = c(15, 22, 17, 24, 16, 21, 18, 23)) +
+    labs(y = "Annual Total Count\nof Trichoptera",
+         x = "Annual Total Count\nof Aquatic Diptera",
+         shape = "Site") +
+    theme_bw() +
+    theme(text = element_text(size = 20),
+          legend.position = "none"))
+
+# Figure showing stonefly v. dipteran emergence
+(fig_annual_sumP <- ggplot(dat_annual_wide_all, 
+                           aes(x = dipteran, 
+                               y = stonefly,
+                               color = factor(year),
+                               shape = watershed_f)) +
+    geom_point(size = 5, stroke = 1.5) +
+    scale_y_log10(limits = c(1, 2000),
+                  breaks = c(10, 100, 1000)) +
+    scale_x_log10(limits = c(900, 30000),
+                  breaks = c(1000, 5000, 25000)) +
+    scale_color_manual(values = c("#005A32", "#41AB5D", "#A1D99B",
+                                  "grey70", "#9E9AC8", "#6A51A3",
+                                  "#4A1486"),
+                       guide = "none") +
+    scale_shape_manual(values = c(15, 22, 17, 24, 16, 21, 18, 23)) +
+    labs(y = "Annual Total Count\nof Plecoptera",
+         x = "Annual Total Count\nof Aquatic Diptera",
+         shape = "Site") +
+    theme_bw() +
+    theme(text = element_text(size = 20),
+          legend.position = "none"))
+
+# Figure showing mayfly v. dipteran emergence
+(fig_annual_sumE <- ggplot(dat_annual_wide_all, 
+                           aes(x = dipteran, 
+                               y = mayfly,
+                               color = factor(year),
+                               shape = watershed_f)) +
+    geom_point(size = 5, stroke = 1.5) +
+    scale_y_log10(limits = c(1, 2000),
+                  breaks = c(10, 100, 1000)) +
+    scale_x_log10(limits = c(900, 30000),
+                  breaks = c(1000, 5000, 25000)) +
+    scale_color_manual(values = c("#005A32", "#41AB5D", "#A1D99B",
+                                  "grey70", "#9E9AC8", "#6A51A3",
+                                  "#4A1486")) +
+    scale_shape_manual(values = c(15, 22, 17, 24, 16, 21, 18, 23)) +
+    labs(y = "Annual Total Count\nof Ephemeroptera",
+         x = "Annual Total Count\nof Aquatic Diptera",
+         shape = "Site",
+         color = "Year") +
+    theme_bw() +
+    theme(text = element_text(size = 20)))
+
+# Combine all three into a single figure.
+(fig_annual_sumEPT <- fig_annual_sumT + fig_annual_sumP + fig_annual_sumE +
+    plot_annotation(tag_levels = "A"))
+
+# Export figure.
+# ggsave(plot = fig_annual_sumEPT,
+#        filename = "figures/annual_EPT_v_D_021726.jpg",
+#        width = 60,
+#        height = 17,
+#        units = "cm")
+
+# and additional figure that will be added to supplement.
+
+# Figure showing caddisfly v. stonefly emergence
+(fig_annual_sumTP <- ggplot(dat_annual_wide_all, 
+                           aes(x = stonefly, 
+                               y = caddisfly,
+                               color = factor(year),
+                               shape = watershed_f)) +
+    geom_point(size = 5, stroke = 1.5) +
+    scale_y_log10(limits = c(1, 2000),
+                  breaks = c(10, 100, 1000)) +
+    scale_x_log10(limits = c(1, 2000),
+                  breaks = c(10, 100, 1000)) +
+    scale_color_manual(values = c("#005A32", "#41AB5D", "#A1D99B",
+                                  "grey70", "#9E9AC8", "#6A51A3",
+                                  "#4A1486"),
+                       guide = "none") +
+    scale_shape_manual(values = c(15, 22, 17, 24, 16, 21, 18, 23)) +
+    labs(y = "Annual Total Count\nof Trichoptera",
+         x = "Annual Total Count\nof Plecoptera",
+         shape = "Site") +
+    theme_bw() +
+    theme(text = element_text(size = 20),
+          legend.position = "none"))
+
+# Figure showing mayfly v. stonefly emergence
+(fig_annual_sumEP <- ggplot(dat_annual_wide_all, 
+                           aes(x = stonefly, 
+                               y = mayfly,
+                               color = factor(year),
+                               shape = watershed_f)) +
+    geom_point(size = 5, stroke = 1.5) +
+    scale_y_log10(limits = c(1, 2000),
+                  breaks = c(10, 100, 1000)) +
+    scale_x_log10(limits = c(1, 2000),
+                  breaks = c(10, 100, 1000)) +
+    scale_color_manual(values = c("#005A32", "#41AB5D", "#A1D99B",
+                                  "grey70", "#9E9AC8", "#6A51A3",
+                                  "#4A1486"),
+                       guide = "none") +
+    scale_shape_manual(values = c(15, 22, 17, 24, 16, 21, 18, 23)) +
+    labs(y = "Annual Total Count\nof Ephemeroptera",
+         x = "Annual Total Count\nof Plecoptera",
+         shape = "Site") +
+    theme_bw() +
+    theme(text = element_text(size = 20),
+          legend.position = "none"))
+
+# Figure showing mayfly v. caddisfly emergence
+(fig_annual_sumET <- ggplot(dat_annual_wide_all, 
+                           aes(x = caddisfly, 
+                               y = mayfly,
+                               color = factor(year),
+                               shape = watershed_f)) +
+    geom_point(size = 5, stroke = 1.5) +
+    scale_y_log10(limits = c(1, 2000),
+                  breaks = c(10, 100, 1000)) +
+    scale_x_log10(limits = c(1, 2000),
+                  breaks = c(10, 100, 1000)) +
+    scale_color_manual(values = c("#005A32", "#41AB5D", "#A1D99B",
+                                  "grey70", "#9E9AC8", "#6A51A3",
+                                  "#4A1486")) +
+    scale_shape_manual(values = c(15, 22, 17, 24, 16, 21, 18, 23)) +
+    labs(y = "Annual Total Count\nof Ephemeroptera",
+         x = "Annual Total Count\nof Trichoptera",
+         shape = "Site",
+         color = "Year") +
+    theme_bw() +
+    theme(text = element_text(size = 20)))
+
+# Combine all three into a single figure.
+(fig_annual_sumEPT_SI <- fig_annual_sumTP + fig_annual_sumEP + fig_annual_sumET +
+    plot_annotation(tag_levels = "A"))
+
+# Export figure.
+# ggsave(plot = fig_annual_sumEPT_SI,
+#        filename = "figures/annual_EPT_v_D_SI_021726.jpg",
+#        width = 60,
+#        height = 17,
+#        units = "cm")
+
 ##### Peak Emergence #####
 
 # Peak emergence vs. peak date
@@ -413,6 +597,153 @@ dat_perc <- dat_order %>%
             all = sum(tot_all)) %>%
   mutate(perc = all_dipt/all)
 
+###### EPT regressions ######
+
+## 1 ## Total Trichoptera vs. Total Diptera
+hist(dat_annual_wide_all$dipteran, breaks = 10)
+hist(dat_annual_wide_all$caddisfly, breaks = 10)
+# both appear approx. normally distributed
+
+# Simple linear regression
+TD.lm1 <- lm(caddisfly ~ dipteran, data = dat_annual_wide_all)
+summary(TD.lm1)
+plot(TD.lm1) # residauls look alright
+# Re-fit with gls to compare better with lmem() function
+TD.lm2 <- gls(caddisfly ~ dipteran, data = dat_annual_wide_all)
+# Fit multi-level model to account for site-level variation
+TD.lm3 <- lme(caddisfly ~ dipteran,
+                random = ~1|watershed,
+                data = dat_annual_wide_all %>%
+                  mutate(watershed = factor(watershed)))
+# Compare the two model structures
+AIC(TD.lm2, TD.lm3) # essentially identical
+# Examine residuals
+plot(TD.lm3)
+qqnorm(TD.lm3)
+# Summary of multi-level model 
+summary(TD.lm3)
+
+## 2 ## Total Plecoptera vs. Total Diptera
+hist(dat_annual_wide_all$dipteran, breaks = 10)
+hist(dat_annual_wide_all$stonefly, breaks = 10)
+# both appear approx. normally distributed
+
+# Simple linear regression
+PD.lm1 <- lm(stonefly ~ dipteran, data = dat_annual_wide_all)
+summary(PD.lm1)
+plot(PD.lm1) # residauls look alright
+# Re-fit with gls to compare better with lmem() function
+PD.lm2 <- gls(stonefly ~ dipteran, data = dat_annual_wide_all)
+# Fit multi-level model to account for site-level variation
+PD.lm3 <- lme(stonefly ~ dipteran,
+              random = ~1|watershed,
+              data = dat_annual_wide_all %>%
+                mutate(watershed = factor(watershed)))
+# Compare the two model structures
+AIC(PD.lm2, PD.lm3) # essentially identical again
+# Examine residuals
+plot(PD.lm3)
+qqnorm(PD.lm3)
+# Summary of multi-level model 
+summary(PD.lm3)
+
+## 3 ## Total Ephemeroptera vs. Total Diptera
+hist(dat_annual_wide_all$dipteran, breaks = 10)
+hist(dat_annual_wide_all$mayfly, breaks = 10)
+# mayfly decidedly NOT normally distributed
+hist(log(dat_annual_wide_all$mayfly), breaks = 10)
+
+# Simple linear regression - log transform will remove 9 observations
+ED.lm1 <- lm(log(mayfly) ~ dipteran, data = dat_annual_wide_all %>%
+               filter(mayfly > 0))
+summary(ED.lm1)
+plot(ED.lm1) # residauls look alright
+# Re-fit with gls to compare better with lmem() function
+ED.lm2 <- gls(log(mayfly) ~ dipteran, data = dat_annual_wide_all %>%
+                filter(mayfly > 0))
+# Fit multi-level model to account for site-level variation
+ED.lm3 <- lme(log(mayfly) ~ dipteran,
+              random = ~1|watershed,
+              data = dat_annual_wide_all %>%
+                mutate(watershed = factor(watershed)) %>%
+                filter(mayfly > 0))
+# Compare the two model structures
+AIC(ED.lm2, ED.lm3) # identical again
+# Examine residuals
+plot(ED.lm3)
+qqnorm(ED.lm3)
+# Summary of multi-level model 
+summary(ED.lm3)
+
+## 4 ## Total Trichoptera vs. Total Plecoptera
+
+# Simple linear regression
+TP.lm1 <- lm(caddisfly ~ stonefly, data = dat_annual_wide_all)
+summary(TP.lm1)
+plot(TP.lm1) # residauls look alright
+# Re-fit with gls to compare better with lmem() function
+TP.lm2 <- gls(caddisfly ~ stonefly, data = dat_annual_wide_all)
+# Fit multi-level model to account for site-level variation
+TP.lm3 <- lme(caddisfly ~ stonefly,
+              random = ~1|watershed,
+              data = dat_annual_wide_all %>%
+                mutate(watershed = factor(watershed)))
+# Compare the two model structures
+AIC(TP.lm2, TP.lm3) # essentially identical
+# Examine residuals
+plot(TP.lm3)
+qqnorm(TP.lm3)
+# Summary of multi-level model 
+summary(TP.lm3)
+
+## 5 ## Total Ephemeroptera vs. Total Plecoptera
+
+# Simple linear regression
+EP.lm1 <- lm(log(mayfly) ~ stonefly, data = dat_annual_wide_all %>%
+               filter(mayfly > 0))
+summary(EP.lm1)
+plot(EP.lm1) # residauls look alright
+# Re-fit with gls to compare better with lmem() function
+EP.lm2 <- gls(log(mayfly) ~ stonefly, data = dat_annual_wide_all %>%
+                filter(mayfly > 0))
+# Fit multi-level model to account for site-level variation
+EP.lm3 <- lme(log(mayfly) ~ stonefly,
+              random = ~1|watershed,
+              data = dat_annual_wide_all %>%
+                mutate(watershed = factor(watershed)) %>%
+                filter(mayfly > 0))
+# Compare the two model structures
+AIC(EP.lm2, EP.lm3) # essentially identical
+# Examine residuals
+plot(EP.lm3)
+qqnorm(EP.lm3)
+# Summary of multi-level model 
+summary(EP.lm3)
+
+## 6 ## Total Ephemeroptera vs. Total Trichoptera
+
+# Simple linear regression
+ET.lm1 <- lm(log(mayfly) ~ caddisfly, data = dat_annual_wide_all %>%
+               filter(mayfly > 0))
+summary(ET.lm1)
+plot(ET.lm1) # residuals look fine
+# Re-fit with gls to compare better with lmem() function
+ET.lm2 <- gls(log(mayfly) ~ caddisfly, data = dat_annual_wide_all %>%
+                filter(mayfly > 0))
+# Fit multi-level model to account for site-level variation
+ET.lm3 <- lme(log(mayfly) ~ caddisfly,
+              random = ~1|watershed,
+              data = dat_annual_wide_all %>%
+                mutate(watershed = factor(watershed)) %>%
+                filter(mayfly > 0))
+# Compare the two model structures
+AIC(ET.lm2, ET.lm3) # again identical
+# Examine residuals
+plot(ET.lm3)
+qqnorm(ET.lm3)
+# Summary of multi-level model 
+summary(ET.lm3)
+
 ##### Peak Emergence #####
 
 # Estimate mean peak emergence from W5 & W6
@@ -453,20 +784,20 @@ dat_dipt_plotting56 <- dat_dipt_plotting %>%
   filter(watershed %in% c(5,6))
 
 ## 1 ## Peak DOY vs. peak emergence totals
-hist(dat_dipt_plotting56$peak_DOY)
-hist(dat_dipt_plotting56$total_count)
+hist(dat_dipt_plotting56$peak_DOY, breaks = 10)
+hist(dat_dipt_plotting56$total_count, breaks = 10)
 # both appear roughly normally distributed considering the low sample size
 # so I will be leaving them as is rather than applying a transformation
 # of some kind
 
 # Simple linear regression
-peak.lm1 <- lm(total_count ~ peak_DOY, data = dat_dipt_plotting56)
+peak.lm1 <- lm(total_count ~ log(peak_DOY), data = dat_dipt_plotting56)
 summary(peak.lm1)
 plot(peak.lm1) # again, looks alright considering low SS
 # Re-fit with gls to compare better with lmem() function
-peak.lm2 <- gls(total_count ~ peak_DOY, data = dat_dipt_plotting56)
+peak.lm2 <- gls(total_count ~ log(peak_DOY), data = dat_dipt_plotting56)
 # Fit multi-level model to account for site-level variation
-peak.lm3 <- lme(total_count ~ peak_DOY,
+peak.lm3 <- lme(total_count ~ log(peak_DOY),
                   random = ~1|watershed,
                   data = dat_dipt_plotting56 %>%
                     mutate(watershed = factor(watershed)))
