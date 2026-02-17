@@ -429,6 +429,11 @@ dat_all <- dat_all %>%
     #          label = "50th", color = "#375377") +
     annotate("text", x = ymd("2022-09-01"), y = 32, size = 8,
              label = "99th", color = "#8DA0CB") +
+    geom_segment(
+      aes(x = ymd("2020-10-01"), y = 65, 
+          xend = ymd("2020-12-01"), yend = 65), 
+      arrow = arrow(length = unit(0.5, "cm")), 
+      color = "red") +
     geom_line(color = "#3793EC", linewidth = 1) +
     scale_x_date(date_breaks = "6 month", 
                  labels = date_format("%b-%Y"),
@@ -486,7 +491,7 @@ dat_w5 <- dat_all %>%
 
 # Export figure.
 # ggsave(plot = fig_compare2,
-#        filename = "figures/w5_20_21_22_121925.jpg",
+#        filename = "figures/w5_20_21_22_021726.jpg",
 #        width = 35,
 #        height = 25,
 #        units = "cm")
