@@ -254,6 +254,71 @@ peak_deg_days <- dat_deg_days %>%
             sd_dd = sd(sum_degree_days)) %>%
   ungroup()
 
+##### Warming Season LMEM #####
+
+# Pull out cumulative degree days for May 15 of each year.
+# (to remove the inherent relationship between later peaks
+# being correlated with higher degree days).
+cutoff_dd <- dat_deg_days %>%
+  filter(DOY == 140) %>%
+  select(watershed, Year, sum_degree_days)
+
+# And join with peak dates.
+peak_v_dd <- full_join(cutoff_dd, peak_days)
+
+## LMEM - Peak DOY vs. Spring DD
+hist(log(peak_v_dd$sum_degree_days))
+hist(log(peak_v_dd$peak_DOY))
+# both are a bit tough so log-transforming just in case
+
+# Simple linear regression
+pvdd.lm1 <- lm(log(sum_degree_days) ~ log(peak_DOY), data = peak_v_dd)
+summary(pvdd.lm1)
+plot(pvdd.lm1) # residuals look alright considering the data spread
+# Re-fit with gls to compare better with lmem() function
+pvdd.lm2 <- gls(log(sum_degree_days) ~ log(peak_DOY), data = peak_v_dd)
+# Fit multi-level model to account for site-level variation
+pvdd.lm3 <- lme(log(sum_degree_days) ~ log(peak_DOY),
+              random = ~1|watershed,
+              data = peak_v_dd %>%
+                mutate(watershed = factor(watershed)))
+# Compare the two model structures
+AIC(pvdd.lm2, pvdd.lm3) # essentially identical
+# Examine residuals
+plot(pvdd.lm3)
+qqnorm(pvdd.lm3)
+# Summary of multi-level model 
+summary(pvdd.lm3)
+
+# And plot cumulative DD by day 140 vs. peak DOY
+(fig_peak_dd <- ggplot(peak_v_dd,
+                       aes(x = sum_degree_days, y = peak_DOY,
+                           color = factor(Year), 
+                           shape = factor(watershed))) +
+    geom_point(size = 10, stroke = 2) +
+    scale_color_manual(values = c("#005A32", "#41AB5D", "#A1D99B",
+                                  "grey80", "#9E9AC8", "#6A51A3",
+                                  "#4A1486")) +
+    scale_shape_manual(values = c(16, 21)) +
+    labs(y = "Spring Peak DOY",
+         x = "Cumulative Degree\nDays by DOY 140",
+         color = "Year",
+         shape = "Watershed") +
+    theme_bw() +
+    theme(text = element_text(size = 20)))
+
+# Combined phenology figure.
+(fig_degday_full3 <- (((fig_degday3 / fig_degday4) | (fig_peak_dd)) + 
+                        plot_layout(widths = c(2,1)) +
+                        plot_annotation(tag_levels = "A")))
+
+# Export figure.
+# ggsave(plot = fig_degday_full3,
+#        filename = "figures/sum_emerge_degdays_021926.jpg",
+#        width = 60,
+#        height = 20,
+#        units = "cm")
+
 ##### Historic Temp #####
 
 # NOTE - not using this due to concerns re:
